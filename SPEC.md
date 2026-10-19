@@ -261,6 +261,11 @@ Whatever git cannot read counts as a problem. It runs as git pre-commit and pre-
 way), and again on every outgoing commit before each upload. `openself guard --history` checks
 every commit, for CI. A push commits only `profile.age`, the recipients and `.gitignore`.
 
+A home whose main branch takes no direct pushes (a GitHub ruleset that requires a pull request
+and the guard check) says so in `.openself/config` with the line `push = pull-request`. A push
+then goes to the branch `openself/snapshot` and opens a pull request that GitHub merges by
+itself, as a merge commit, once the check passes; every machine fast-forwards to it.
+
 The recipients file comes in with every pull, so a tool never encrypts to a key just because it is
 listed there. Each machine keeps the keys it has approved inside its `.git` folder, where no pull
 reaches; the first sync on a machine approves the list as it is, `openself keys` approves the

@@ -88,6 +88,11 @@ A key that shows up in `.openself/recipients` (with a pull, say) is not used unt
 on this machine: push stops and lists it. Run `openself trust` to approve a key that is yours, for
 example a new machine's; otherwise remove it. `openself guard --history` checks every commit, which
 the template runs in CI so a bad push at least turns red.
+
+For a home on GitHub, lock `main` with a ruleset (pull request and the `guard` check required,
+no direct or force pushes) and put `push = pull-request` in `.openself/config`: push then opens a
+pull request that merges by itself once the guard passes (needs the `gh` CLI and auto-merge
+switched on for the repository).
 Pushing only needs the public keys, so an AI can encrypt and push changes without access to the
 secret key; decrypting stays with you.
 

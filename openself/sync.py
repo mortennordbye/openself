@@ -28,6 +28,7 @@ import threading
 from . import guard, history, index, model
 
 PAD = 64 * 1024
+SNAPSHOT_BRANCH = "openself/snapshot"
 KEYCHAIN = ("openself", "age-identity")
 IDENTITY_FILE = os.path.expanduser("~/.config/openself/identity.txt")
 IDENTITY_COMMAND_FILE = os.path.expanduser("~/.config/openself/identity-command")
@@ -69,6 +70,19 @@ def find_home(start="."):
 
 def recipients_file(home):
     return os.path.join(home, ".openself", "recipients")
+
+
+def setting(home, key, default=""):
+    """A `key = value` line in .openself/config, committed so every machine does the same."""
+    try:
+        with open(os.path.join(home, ".openself", "config"), encoding="utf-8") as f:
+            for line in f:
+                k, sep, v = line.partition("=")
+                if sep and k.strip() == key and not k.lstrip().startswith("#"):
+                    return v.strip()
+    except OSError:
+        pass
+    return default
 
 
 def recipients(home):
@@ -463,9 +477,31 @@ def push(home, commit=True, upload=True, force=False):
             bad = guard.unpushed(home)
             if bad:
                 raise SyncError("refusing to upload, the home repository would publish:\n  " + "\n  ".join(bad))
-            run(["git", "-C", home, "push", "-q"])
+            if setting(home, "push") == "pull-request":
+                result["pr"] = push_pull_request(home)
+            else:
+                run(["git", "-C", home, "push", "-q"])
             result["uploaded"] = True
     return result
+
+
+def push_pull_request(home):
+    """Push to a branch and open a pull request that GitHub merges by itself once its required
+    checks pass, for a home whose main branch takes no direct pushes. A merge commit, not a
+    squash, so every machine can fast-forward to it."""
+    if not shutil.which("gh"):
+        raise SyncError("pushing through a pull request needs the GitHub CLI: brew install gh, then gh auth login")
+    base = git_out(home, "rev-parse", "--abbrev-ref", "HEAD") or "main"
+    run(["git", "-C", home, "push", "-q", "--force", "origin", f"HEAD:refs/heads/{SNAPSHOT_BRANCH}"])
+
+    def gh(*args):
+        return run(["gh", *args], cwd=home).decode().strip()
+    url = gh("pr", "list", "--head", SNAPSHOT_BRANCH, "--state", "open", "--json", "url", "--jq", ".[0].url")
+    if not url:
+        url = gh("pr", "create", "--base", base, "--head", SNAPSHOT_BRANCH, "--title", "Encrypted profile snapshot",
+                 "--body", "Made by `openself push`. GitHub merges it once the guard check passes.").splitlines()[-1]
+    gh("pr", "merge", url, "--auto", "--merge")
+    return url
 
 
 def pull(home, download=True):
