@@ -354,6 +354,36 @@ def parse_table(body):
     return rows
 
 
+def retired(meta, body, type_):
+    """What an older profile still carries that schema 1 no longer has: retired fields, and the
+    Source column at the end of a certifications or education table."""
+    out = [k for k in meta if k in schema.RETIRED]
+    cols = schema.table_columns(type_)
+    head = next((ln for ln in body.split("\n") if ln.strip().startswith("|")), "")
+    if cols and head and len(head.strip().strip("|").split("|")) == len(cols) + 1:
+        out.append("source column")
+    return out
+
+
+def drop_retired(meta, body, type_):
+    """meta and body without what `retired` finds."""
+    meta = {k: v for k, v in meta.items() if k not in schema.RETIRED}
+    cols = schema.table_columns(type_)
+    if cols and "source column" in retired({}, body, type_):
+        lines, inside = body.split("\n"), False
+        for i, ln in enumerate(lines):
+            if not ln.strip().startswith("|"):
+                if inside:
+                    break
+                continue
+            inside = True
+            cells = [c.strip() for c in ln.strip().strip("|").split("|")][:len(cols)]
+            sep = all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c)
+            lines[i] = "|" + "|".join("---" for _ in cols) + "|" if sep else "| " + " | ".join(cells) + " |"
+        body = "\n".join(lines)
+    return meta, body
+
+
 def dump_table(rows, header):
     def cell(c):
         return " ".join(str(c).replace("|", "/").split())

@@ -40,14 +40,6 @@ button.os-rev { cursor: pointer; } button.os-rev:hover { background: var(--os-ho
   color: #fff; font: 700 9px/1 var(--font, -apple-system, system-ui, sans-serif); letter-spacing: .02em; flex: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
 .os-iss.logo { padding: 4px; } .os-iss.logo svg { width: 100%; height: 100%; fill: #fff; }
 .os-iss.site { padding: 2px; background: #fff; box-shadow: inset 0 0 0 1px var(--os-line); } .os-iss.site img { width: 16px; height: 16px; object-fit: contain; display: block; }
-.os-src .os-iss { min-width: 14px; height: 14px; border-radius: 3px; } .os-src .os-iss.logo { padding: 2px; } .os-src .os-iss.site { padding: 1px; } .os-src .os-iss.site img { width: 12px; height: 12px; }
-.os-srcs { display: flex; flex-wrap: wrap; gap: 4px; }
-.os-src { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 5px; border-radius: 99px; font-size: 11.5px; line-height: 18px; white-space: nowrap;
-  background: var(--os-chip); color: var(--os-fg); text-decoration: none; border: 1px solid transparent; }
-.os-src .os-i { width: 12px; height: 12px; color: var(--os-mut); } .os-src small { color: var(--os-mut); font-size: 10.5px; }
-.os-src.k-credly { background: color-mix(in srgb, #ff6b00 14%, var(--os-panel)); } .os-src.k-credly .os-i { color: #ff6b00; }
-.os-src.k-mslearn { background: color-mix(in srgb, #2f7bd8 14%, var(--os-panel)); } .os-src.k-mslearn .os-i { color: #2f7bd8; }
-.os-md a.os-src, a.os-src { color: var(--os-fg); } a.os-src:hover { border-color: var(--os-line); background-image: linear-gradient(var(--os-hover), var(--os-hover)); }
 .os-dialog::backdrop { background: rgba(0,0,0,.45); } .os-dialog h2 { margin: 0 0 6px; font-size: 16px; }
 .os-dialog textarea, .os-dialog input:not([type=checkbox]) { background: var(--os-field); color: var(--os-fg); border: 1px solid var(--os-line); border-radius: 6px; padding: 7px 8px; font: inherit; width: 100%; box-sizing: border-box; }
 

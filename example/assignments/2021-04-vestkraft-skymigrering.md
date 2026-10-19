@@ -17,7 +17,6 @@ allocation: 80
 team_size: 4
 tech: [Azure, Terraform, Azure DevOps, PowerShell]
 methods: []
-sources: [intake:gammel-cv.pdf, intervju 2026-09-14]
 confidence: stated
 status: active
 last_reviewed: 2026-09-14

@@ -13,7 +13,6 @@ phone:
 linkedin: https://www.linkedin.com/in/ola-eksempel-fiktiv
 github: https://github.com/ola-eksempel-fiktiv
 links: []
-sources: [intake:gammel-cv.pdf, intervju 2026-09-14]
 confidence: stated
 last_reviewed: 2026-09-14
 ---

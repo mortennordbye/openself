@@ -79,13 +79,6 @@
         "type": "string"
       }
     },
-    "sources": {
-      "type": "array",
-      "description": "Where the facts come from, as labels (never paths): 'interview 2026-05-13', 'intake:old-cv.pdf', 'linkedin', 'self-edit 2026-10-20'.",
-      "items": {
-        "type": "string"
-      }
-    },
     "confidence": {
       "type": "string",
       "description": "How sure the facts are: verified (the owner checked this entry), stated (the owner said it), old-cv, linkedin, needs-confirmation. Empty means not assessed.",

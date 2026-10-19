@@ -169,7 +169,7 @@ def main(argv=None):
         fields = {}
         for kv in a.fields:
             k, _, v = kv.partition("=")
-            fields[k] = [x.strip() for x in v.split(",") if x.strip()] if k in ("tech", "methods", "customers", "breaks", "sources") else v
+            fields[k] = [x.strip() for x in v.split(",") if x.strip()] if k in ("tech", "methods", "customers", "breaks") else v
         secs = dict(s.split("=", 1) for s in a.section)
         id_ = write.scaffold(a.dir, a.type, fields, secs)
         index.write_all(a.dir)

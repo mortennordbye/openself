@@ -11,6 +11,8 @@ SCHEMA_VERSION = 1
 TYPES = ("person", "certifications", "education", "employment", "assignment")
 COLLECTIONS = {"employment": "employments", "assignment": "assignments"}
 SINGLETONS = ("person", "certifications", "education")
+# Fields older profiles may still carry. They are not errors; lint asks for `openself fmt`, which drops them.
+RETIRED = {"sources"}
 
 
 @lru_cache(maxsize=None)
@@ -63,7 +65,7 @@ def validate(meta, type_):
         elif k not in ("schema", "id", "type") and meta[k] in ("", []):
             out.append((k, "required, but empty"))
     for k, v in meta.items():
-        if k.startswith("x-"):
+        if k.startswith("x-") or k in RETIRED:
             continue
         p = props.get(k)
         if p is None:

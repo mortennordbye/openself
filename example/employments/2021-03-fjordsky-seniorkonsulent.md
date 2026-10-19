@@ -10,7 +10,6 @@ end: ongoing
 breaks: []
 employment_type: permanent
 tech: [Azure, Kubernetes, Terraform]
-sources: [intervju 2026-09-14]
 confidence: stated
 status: active
 last_reviewed: 2026-09-14

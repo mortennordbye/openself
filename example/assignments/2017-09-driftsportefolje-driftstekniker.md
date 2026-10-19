@@ -22,7 +22,6 @@ allocation: 100
 team_size:
 tech: [Windows Server, VMware vSphere, Microsoft 365, Linux]
 methods: []
-sources: [intake:gammel-cv.pdf]
 confidence: old-cv
 status: active
 last_reviewed: 2026-09-14

@@ -185,9 +185,6 @@ def save(root, d, actor="owner"):
             raise Refused(400, "; ".join(problems))
         prof = model.load_profile(root)
         old = prof.entries.get(id_)
-        stamp = f"self-edit {model.today()}"
-        if actor == "owner" and stamp not in meta.get("sources", []):
-            meta["sources"] = list(meta.get("sources", [])) + [stamp]
         if d.get("verified"):
             meta["confidence"] = "verified"
         elif old is not None and "confidence" in old.meta:
@@ -205,7 +202,6 @@ def new(root, d, actor="owner"):
     with lock_for(root):
         keep_outside_changes(root)
         fields = clean_meta(d.get("fields"), type_)
-        fields.setdefault("sources", [f"self-edit {model.today()}"])
         fields["confidence"] = fields.get("confidence") or "stated"
         fields = {k: v for k, v in fields.items() if v not in ("", [])}
         problems = [f"{f}: {m}" for f, m in schema.validate(dict(fields, schema="1", id="x-x-x", type=type_), type_)
