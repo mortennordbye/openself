@@ -264,8 +264,8 @@ def import_(root, d, actor="owner"):
         rel, old, new, results = importer.run(root, urls)
     except FileNotFoundError:
         raise Refused(404, "this profile has no certifications.md")
-    except OSError as e:
-        raise Refused(502, f"could not read the page: {getattr(e, 'reason', e)}")
+    if results and all(r.get("error") for r in results):
+        raise Refused(502, "could not read " + "; ".join(f"{importer.NAMES[r['source']]}: {r['error']}" for r in results), results=results)
     changed = new != old
     if d.get("dry_run") or not changed:
         return {"ok": True, "dry_run": bool(d.get("dry_run")), "changed": changed, "results": results}
@@ -275,7 +275,7 @@ def import_(root, d, actor="owner"):
             if f.read() != old:
                 raise Refused(409, "certifications changed while importing; try again")
         write.write_atomic(os.path.join(root, rel), new, expected_sha=model.sha(old))
-        what = "imported from " + ", ".join(dict.fromkeys(importer.NAMES[r["source"]] for r in results))
+        what = "imported from " + ", ".join(dict.fromkeys(importer.NAMES[r["source"]] for r in results if not r.get("error")))
         return finish(root, "certifications", what, actor) | {"changed": True, "results": results}
 
 

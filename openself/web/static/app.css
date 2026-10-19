@@ -151,6 +151,12 @@ button.os-rev { cursor: pointer; } button.os-rev:hover { background: var(--os-ho
 .os-tb span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .os-tb i { display: block; height: 8px; border-radius: 4px; background: var(--os-acc2); } .os-tb i.ongoing { background: linear-gradient(90deg, var(--os-acc2) 70%, color-mix(in srgb, var(--os-acc2) 40%, transparent)); }
 .os-tb span:last-child { color: var(--os-mut); text-align: right; }
+.os-acct { padding: 8px 0; border-top: 1px solid var(--os-line); } .os-acct:first-of-type { border-top: 0; padding-top: 0; }
+.os-acct-top { display: flex; align-items: center; gap: 8px; } .os-acct-top > :last-child { margin-left: auto; font-size: 12px; }
+.os-acct-top a { color: var(--os-acc); text-decoration: none; }
+.os-acct-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--os-line); } .os-acct-dot.on { background: var(--os-ok); } .os-acct-dot.bad { background: var(--os-bad); }
+.os-acct-st { font-size: 12px; color: var(--os-mut); margin: 2px 0 0 16px; } .os-acct-st.bad { color: var(--os-bad-fg); }
+.os-acct-new { color: var(--os-acc); font-weight: 600; } .os-accts .os-acts { margin: 10px 0 0; }
 .os-qi { display: block; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--os-line); color: var(--os-fg); padding: 7px 0; font: inherit; font-size: 13px; cursor: pointer; }
 .os-qi:first-of-type { border-top: 0; } .os-qi:hover { color: var(--os-acc); } .os-qi small { display: block; color: var(--os-mut); font-size: 11.5px; }
 
