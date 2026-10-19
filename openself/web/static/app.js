@@ -375,8 +375,9 @@ function OpenSelfUI(root, host) {
     if (all && !ro && e.type === 'certifications') btn('download', t('importBtn'), () => importDialog(e));
   }
   // Shared by both timelines: year bands, career gaps, the now marker and a hover card.
-  function timeFrame(items) {
-    const y0 = Math.floor(Math.min(...items.map(e => ym(val(e, 'start')))) / 12), y1 = Math.floor(Math.max(nowYm(), ...items.map(endYm)) / 12), span = (y1 - y0 + 1) * 12;
+  function timeFrame(items, extra) {
+    const more = extra || [], y0 = Math.floor(Math.min(...items.map(e => ym(val(e, 'start'))), ...more) / 12);
+    const y1 = Math.floor(Math.max(nowYm(), ...items.map(endYm), ...more) / 12), span = (y1 - y0 + 1) * 12;
     return { y0, y1, span, at: mo => (mo - y0 * 12) / span * 100, w: (a, b) => (b - a + 1) / span * 100 };
   }
   function backdrop(f) {
@@ -392,26 +393,50 @@ function OpenSelfUI(root, host) {
   }
   function hoverCard(box) {
     const tip = el('div', 'os-tltip'); box.append(tip);
-    return (bar, e) => {
+    return (bar, e, info) => {
       bar.removeAttribute('title');
       bar.addEventListener('mouseenter', () => {
-        tip.replaceChildren(el('b', '', e.type === 'assignment' ? customerOf(e) : val(e, 'employer')),
+        if (info) tip.replaceChildren(el('b', '', info[0]), el('div', '', info[1]), el('small', '', info[2]));
+        else tip.replaceChildren(el('b', '', e.type === 'assignment' ? customerOf(e) : val(e, 'employer')),
           el('div', '', e.type === 'assignment' ? val(e, 'role') : val(e, 'title')), el('small', '', period(e) + (dur(e) ? ' · ' + dur(e) : '')));
-        if (openFlags(e)) tip.append(el('span', 'os-badge', t('openQuestions', { n: openFlags(e) })));
+        if (!info && openFlags(e)) tip.append(el('span', 'os-badge', t('openQuestions', { n: openFlags(e) })));
         tip.classList.add('on'); });
       bar.addEventListener('mousemove', ev => { const r = box.getBoundingClientRect(), x = ev.clientX - r.left;
-        tip.style.left = Math.min(x + 14, r.width - tip.offsetWidth - 4) + 'px'; tip.style.top = (ev.clientY - r.top + 16) + 'px'; });
+        tip.style.left = Math.min(x + 14, r.width - tip.offsetWidth - 4) + 'px'; const y = ev.clientY - r.top;
+        tip.style.top = (y + 16 + tip.offsetHeight > r.height ? y - tip.offsetHeight - 10 : y + 16) + 'px'; });
       bar.addEventListener('mouseleave', () => tip.classList.remove('on'));
     };
+  }
+  // Certificates from the certifications table: name, issuer, the month taken and the month it expires.
+  function certRows() {
+    const c = byId('certifications'); if (!c || c.removed) return [];
+    const mo = s => ym(String(s || '').slice(0, 7));
+    return ((c.sections.find(x => x.id === '_intro') || {}).text || '').split('\n').filter(l => /^\s*\|/.test(l)).slice(1)
+      .map(l => l.trim().replace(/^\||\|$/g, '').split('|').map(x => x.trim())).filter(r => !r.every(x => /^:?-*:?$/.test(x)))
+      .map(r => ({ name: r[0], issuer: r[1] || '', date: r[2] || '', expires: r[3] || '', at: mo(r[2]), to: mo(r[3]) })).filter(r => r.name && r.at != null);
+  }
+  // One lane of diamonds, one per certificate; an expired one is hollow.
+  function certLane(f, certs, card, cls) {
+    const lane = el('div', cls), rows = [], step = f.w(0, 0) * 3;
+    lane.append(withIcon('award', t('certsN').replace(/^./, x => x.toUpperCase()), 'os-cert-lab'));
+    for (const c of [...certs].sort((a, b) => a.at - b.at)) {
+      const x = f.at(c.at); let r = rows.findIndex(end => end < x - step); if (r < 0) { r = rows.length; rows.push(0); } rows[r] = x;
+      const d = el('button', 'os-cert' + (c.to != null && c.to < nowYm() ? ' expired' : '')); d.style.left = x + '%'; d.style.top = (3 + r * 12) + 'px';
+      card(d, null, [c.name, c.issuer, [c.date, c.expires && '→ ' + c.expires].filter(Boolean).join(' ')]);
+      d.onclick = () => (PF.view === 'overview' ? reveal('certifications', false) : select('certifications')); lane.append(d);
+    }
+    lane.style.height = (rows.length * 12 + 10) + 'px';
+    return lane;
   }
   function miniTimeline(jobs, kidsOf, lit) {
     const box = el('div', 'os-mtl' + (PF.grown ? '' : ' grow')), dated = jobs.filter(j => ym(val(j, 'start')) != null);
     if (!dated.length) return el('div');
     PF.grown = true;
-    const f = timeFrame(dated.flatMap(j => [j, ...kidsOf(j)]).filter(e => ym(val(e, 'start')) != null)), card = hoverCard(box);
+    const certs = certRows(), f = timeFrame(dated.flatMap(j => [j, ...kidsOf(j)]).filter(e => ym(val(e, 'start')) != null), certs.map(c => c.at)), card = hoverCard(box);
     const legend = el('div', 'os-mtl-legend');
     for (const [cls, label] of [['job', t('employment')], ['k-client', enumLabel('kind', 'client')], ['k-internal', enumLabel('kind', 'internal')], ['k-portfolio', enumLabel('kind', 'portfolio')]]) {
       const s = el('span'); s.append(el('i', cls), label); legend.append(s); }
+    if (certs.length) { const s = el('span'); s.append(el('i', 'os-cert-key'), t('certsN')); legend.append(s); }
     const axis = el('div', 'os-mtl-axis'); for (let y = f.y0; y <= f.y1; y++) { const s = el('span', '', String(y)); s.style.left = f.at(y * 12) + '%'; s.style.width = f.w(0, 11) + '%'; axis.append(s); }
     const lanes = el('div', 'os-mtl-lanes'); lanes.append(backdrop(f));
     const bar = (e, cls, top, n) => { const a = ym(val(e, 'start')), b = endYm(e), d = el('button', 'os-mtl-bar ' + cls + (val(e, 'end') === 'ongoing' ? ' ongoing' : ''));
@@ -431,6 +456,7 @@ function OpenSelfUI(root, host) {
       }
       lane.style.height = (rows.length ? 28 + rows.length * 8 : 26) + 'px'; lanes.append(lane);
     }
+    if (certs.length) lanes.append(certLane(f, certs, card, 'os-mtl-lane os-cert-lane'));
     box.append(legend, axis, lanes); return box;
   }
   function sideColumn(side, live, jobs) {
@@ -858,7 +884,7 @@ function OpenSelfUI(root, host) {
   function timeline(box) {
     const all = entries().filter(e => !e.removed && (e.type === 'employment' || e.type === 'assignment') && ym(val(e, 'start')) != null);
     if (!all.length) { box.append(el('div', 'os-empty', t('noDates'))); return; }
-    const f = timeFrame(all), pct = mo => f.at(mo) + '%', wid = (a, b) => f.w(a, b) + '%';
+    const certs = certRows(), f = timeFrame(all, certs.map(c => c.at)), pct = mo => f.at(mo) + '%', wid = (a, b) => f.w(a, b) + '%';
     const tl = el('div', 'os-tl'), axis = el('div', 'os-tl-axis'), rows = el('div', 'os-tl-rows'), card = hoverCard(tl);
     for (let y = f.y0; y <= f.y1; y++) { const s = el('span', '', String(y)); s.style.left = pct(y * 12); s.style.width = wid(0, 11); axis.append(s); }
     tl.append(axis); rows.append(backdrop(f));
@@ -884,6 +910,7 @@ function OpenSelfUI(root, host) {
       }
       row.style.height = (30 + lanes.length * 22) + 'px'; rows.append(row);
     }
+    if (certs.length) rows.append(certLane(f, certs, card, 'os-tl-row os-cert-lane'));
     tl.append(rows); box.append(tl, el('div', 'os-lead', t('tlLead')));
   }
   function techView(box) {

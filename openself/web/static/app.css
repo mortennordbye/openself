@@ -101,6 +101,15 @@ button.os-rev { cursor: pointer; } button.os-rev:hover { background: var(--os-ho
 .os-tlnow::before { content: ""; position: absolute; top: -4px; left: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--os-bad); animation: os-pulse 2s infinite; }
 .os-tlnow span { position: absolute; top: -18px; left: 0; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: var(--os-bad); text-transform: uppercase; letter-spacing: .05em; }
 @keyframes os-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--os-bad) 60%, transparent); } 70%, 100% { box-shadow: 0 0 0 7px transparent; } }
+.os-cert-lane { border-top: 1px dashed var(--os-line); margin-top: 4px; padding-top: 0; }
+.os-cert-lab { position: absolute; left: 0; top: 2px; font-size: 10.5px; font-weight: 600; color: var(--os-mut); pointer-events: none; }
+.os-cert-lab .os-i { width: 12px; height: 12px; }
+.os-cert { position: absolute; width: 10px; height: 10px; margin-left: -5px; padding: 0; border: 2px solid var(--os-card); border-radius: 2px; transform: rotate(45deg);
+  background: #e8b931; cursor: pointer; z-index: 1; transition: transform .15s, box-shadow .15s; }
+.os-cert:hover { transform: rotate(45deg) scale(1.4); box-shadow: 0 0 0 3px color-mix(in srgb, #e8b931 35%, transparent); z-index: 3; }
+.os-cert.expired { background: var(--os-card); border-color: #e8b931; }
+.os-mtl-legend i.os-cert-key { width: 8px; height: 8px; border-radius: 1px; transform: rotate(45deg); background: #e8b931; margin: 0 2px; }
+.os-mtl-lanes:hover .os-cert:not(:hover) { opacity: .5; }
 .os-tltip { position: absolute; z-index: 5; pointer-events: none; opacity: 0; transform: translateY(4px); transition: opacity .12s, transform .12s; min-width: 160px; max-width: 280px;
   background: var(--os-panel); border: 1px solid var(--os-line); border-radius: 10px; padding: 8px 11px; box-shadow: var(--os-shadow); font-size: 12px; }
 .os-tltip.on { opacity: 1; transform: none; } .os-tltip b { font-size: 13px; color: var(--os-strong); } .os-tltip div { color: var(--os-fg); } .os-tltip small { display: block; color: var(--os-mut); margin-top: 2px; }
