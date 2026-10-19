@@ -31,6 +31,14 @@
         "type": "string"
       }
     },
+    "imports": {
+      "type": "array",
+      "description": "Public pages the table is imported from, so the import can run again: a Credly profile or a Microsoft Learn transcript link.",
+      "items": {
+        "type": "string"
+      },
+      "x-scaffold": false
+    },
     "confidence": {
       "type": "string",
       "description": "How sure the facts are: verified (the owner checked this entry), stated (the owner said it), old-cv, linkedin, needs-confirmation. Empty means not assessed.",

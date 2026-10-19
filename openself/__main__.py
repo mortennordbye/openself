@@ -11,6 +11,8 @@
   show DIR ID REV                                 an entry as it was at a revision
   restore DIR ID REV [--actor ...]                bring an old version back as a new commit
   as-of DIR DATE                                  the index as the profile was on DATE (YYYY-MM-DD)
+  import DIR [URL ...] [--dry-run]                certifications from a Credly profile or a Microsoft
+                                                  Learn transcript link (default: the stored links)
 
   serve [DIR] [--port 8765] [--no-browser]        the web app for a profile
   home [DIR]                                      make DIR a home: .openself/, profile/, .gitignore
@@ -26,7 +28,7 @@ import sys
 
 import os
 
-from . import history, index, lint, model, sync, write
+from . import history, importer, index, lint, model, sync, write
 
 
 def main(argv=None):
@@ -49,6 +51,7 @@ def main(argv=None):
     p = sub.add_parser("restore"); p.add_argument("dir"); p.add_argument("id"); p.add_argument("rev")
     p.add_argument("--actor", default="owner", choices=history.ACTORS)
     p = sub.add_parser("as-of"); p.add_argument("dir"); p.add_argument("date")
+    p = sub.add_parser("import"); p.add_argument("dir"); p.add_argument("urls", nargs="*"); p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("serve"); p.add_argument("dir", nargs="?"); p.add_argument("--port", type=int, default=8765)
     p.add_argument("--no-browser", action="store_true")
     for name in ("home", "keys", "push", "pull"):
@@ -126,6 +129,8 @@ def main(argv=None):
         print(history.show(a.dir, a.id, a.rev)[1], end="")
     elif a.cmd == "restore":
         print(history.restore(a.dir, a.id, a.rev, a.actor) or "already identical")
+    elif a.cmd == "import":
+        return run_import(a.dir, a.urls, a.dry_run)
     elif a.cmd == "as-of":
         rev = history.rev_at(a.dir, a.date)
         if not rev:
@@ -159,6 +164,32 @@ def make_home(path):
         import subprocess
         subprocess.run(["git", "init", "-q", "-b", "main", path], check=True)
     return f"home ready in {path}; next: openself keys, then openself serve"
+
+
+def run_import(root, urls, dry_run):
+    try:
+        rel, old, new, results = importer.run(root, urls)
+    except (OSError, ValueError) as e:
+        print(f"import failed: {getattr(e, 'reason', e)}", file=sys.stderr)
+        return 1
+    for r in results:
+        print(f"{importer.NAMES[r['source']]}: {r['found']} found, {len(r['added'])} added, {len(r['updated'])} updated, "
+              f"{len(r['conflicts'])} conflicts, {r['unchanged']} unchanged")
+        for x in r["added"]:
+            print(f"  + {x['name']} ({x['issuer']}, {x['date'] or '?'})")
+        for x in r["updated"]:
+            print(f"  ~ {x['name']}: " + ", ".join(f"{k} {v[0] or '(empty)'} -> {v[1]}" for k, v in x["changes"].items()))
+        for x in r["conflicts"]:
+            print(f"  ! {x}")
+    if new == old:
+        print("nothing to change")
+    elif dry_run:
+        print("dry run: nothing written")
+    else:
+        write.write_atomic(f"{root}/{rel}", new, expected_sha=model.sha(old))
+        index.write_all(root)
+        print(f"{rel} updated; commit with: openself commit {root} certifications 'imported' --actor owner")
+    return 0
 
 
 def fmt(root, check):
