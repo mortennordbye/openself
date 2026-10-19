@@ -20,7 +20,7 @@
 function OpenSelfUI(root, host) {
   'use strict';
   const PF = { data: null, sel: '', view: 'overview', dirty: false, edit: null, filters: { tech: [], removed: false },
-               query: '', asof: null, hist: null, conflict: null, loading: false, open: new Set() };
+               query: '', asof: null, hist: null, conflict: null, loading: false, open: new Set(), news: null, checked: false };
   const store = (() => { try { return window.localStorage; } catch (e) { return null; } })();
   const KEY = 'openself.sel.' + (host.key || 'profile');
 
@@ -111,6 +111,7 @@ function OpenSelfUI(root, host) {
       certsN: 'certifications', topTech: 'Most used technology', allN: 'All {n}', openQ: 'Open questions', answerAll: 'Answer them all',
       noOpenQ: 'No open questions.', showingOnly: 'Showing only', techTip: 'Show only where it was used', certsEdu: 'Certifications and education',
       showRemovedN: 'Show removed ({n})', hideRemoved: 'Hide removed', nowWord: 'now',
+      newsFrom: 'New from {src}: {parts}.', newsAdded: '{n} new', newsUpdated: '{n} filled in', newsConflicts: '{n} disagree', newsSee: 'See and import', notNow: 'Not now',
       importBtn: 'Import', importTitle: 'Import certifications', importLead: 'Paste the link to your Credly profile or your Microsoft Learn transcript, one per line. Nothing is saved until you have seen what changes.',
       importWhere: 'Credly: your profile page (credly.com/users/…). Microsoft Learn: Profile → Transcript → Share link.', preview: 'Preview',
       found: '{n} found', nothingToChange: 'Nothing to change: the table already has all of it.', imported: 'Imported and versioned', importNow: 'Import',
@@ -151,6 +152,7 @@ function OpenSelfUI(root, host) {
       certsN: 'sertifiseringer', topTech: 'Mest brukt teknologi', allN: 'Alle {n}', openQ: 'Åpne spørsmål', answerAll: 'Svar på alle',
       noOpenQ: 'Ingen åpne spørsmål.', showingOnly: 'Viser bare', techTip: 'Vis bare der den ble brukt', certsEdu: 'Sertifiseringer og utdanning',
       showRemovedN: 'Vis fjernet ({n})', hideRemoved: 'Skjul fjernet', nowWord: 'nå',
+      newsFrom: 'Nytt fra {src}: {parts}.', newsAdded: '{n} nye', newsUpdated: '{n} fylt ut', newsConflicts: '{n} uenige', newsSee: 'Se og importer', notNow: 'Ikke nå',
       importBtn: 'Importer', importTitle: 'Importer sertifiseringer', importLead: 'Lim inn lenken til Credly-profilen din eller Microsoft Learn-transkripsjonen, én per linje. Ingenting lagres før du har sett hva som endres.',
       importWhere: 'Credly: profilsiden din (credly.com/users/…). Microsoft Learn: Profil → Transkripsjon → Del lenke.', preview: 'Forhåndsvis',
       found: '{n} funnet', nothingToChange: 'Ingenting å endre: tabellen har alt fra før.', imported: 'Importert og versjonert', importNow: 'Importer',
@@ -203,6 +205,7 @@ function OpenSelfUI(root, host) {
       PF.data = d;
       if (!PF.sel || !d.entries.some(e => e.id === PF.sel)) PF.sel = (store && store.getItem(KEY)) || 'person';
       render();
+      if (!PF.checked) { PF.checked = true; checkImports(); }
     } finally { PF.loading = false; }
   }
   async function tick() {
@@ -301,6 +304,7 @@ function OpenSelfUI(root, host) {
       if (openFlags(p)) about.append(el('span', 'os-badge', String(openFlags(p))));
       hero.append(av, info, about); col.append(hero);
     }
+    if (PF.news) col.append(newsBanner(PF.news));
     if (PF.filters.tech.length) {
       const f = el('div', 'os-filter'); f.append(icon('filter'), t('showingOnly'));
       for (const x of PF.filters.tech) { const c = el('button', 'os-chip on', x + ' ×'); c.onclick = () => { PF.filters.tech = PF.filters.tech.filter(y => y !== x); render(); }; f.append(c); }
@@ -731,7 +735,23 @@ function OpenSelfUI(root, host) {
     d.showModal(); (inputs.customer || inputs.employer).focus();
   }
   // Certifications from Credly or Microsoft Learn: a preview first, then the import as one commit.
-  function importDialog(e) {
+  // At start-up: are there certificates on the stored pages that the table does not have yet?
+  async function checkImports() {
+    const c = byId('certifications');
+    if (!c || !list(c, 'imports').length || PF.data.readonly || PF.asof) return;
+    let j; try { j = await host.post('import', { dry_run: true }); } catch (err) { return; }
+    if (j && j.ok && j.changed) { PF.news = j; if (PF.view === 'overview' && !PF.dirty) render(); }
+  }
+  function newsBanner(j) {
+    const b = el('div', 'os-news'), n = k => j.results.reduce((a, r) => a + r[k].length, 0);
+    const parts = [[n('added'), 'newsAdded'], [n('updated'), 'newsUpdated'], [n('conflicts'), 'newsConflicts']].filter(x => x[0]).map(([k, w]) => t(w, { n: k })).join(', ');
+    const src = [...new Set(j.results.filter(r => r.added.length + r.updated.length + r.conflicts.length).map(r => r.source === 'credly' ? 'Credly' : 'Microsoft Learn'))].join(', ');
+    const see = el('button', 'os-btn on'), later = el('button', 'os-btn ghost', t('notNow'));
+    see.append(icon('download'), t('newsSee')); see.onclick = () => importDialog(byId('certifications'), j);
+    later.onclick = () => { PF.news = null; render(); };
+    b.append(icon('download'), el('span', '', t('newsFrom', { src, parts })), see, later); return b;
+  }
+  function importDialog(e, ready) {
     let d = document.getElementById('osimport'); if (d) d.remove();
     d = el('dialog', 'os-dialog'); d.id = 'osimport'; document.body.append(d);
     const ta = el('textarea'); ta.rows = 3; ta.value = list(e, 'imports').join('\n'); ta.placeholder = 'https://www.credly.com/users/…\nhttps://learn.microsoft.com/…/transcript/…';
@@ -741,12 +761,7 @@ function OpenSelfUI(root, host) {
     d.append(el('h2', '', t('importTitle')), el('p', 'os-lead', t('importLead')), ta, el('p', 'os-lead', t('importWhere')), out);
     row.append(msg, cancel, pre, go); d.append(row);
     const urls = () => ta.value.split(/\s+/).filter(Boolean);
-    const run = async dry => {
-      msg.textContent = ''; pre.disabled = go.disabled = true; status(t('preview') + ' …', 'busy');
-      const j = await (dry ? host.post('import', { urls: urls(), dry_run: true }) : post('import', { urls: urls() }));
-      status(''); pre.disabled = false;
-      if (!j.ok) { msg.textContent = j.message || t('couldNot'); return; }
-      if (!dry) { d.close(); toast(j.changed ? t('imported') : t('nothingToChange')); await load(); return; }
+    const show = j => {
       out.replaceChildren();
       for (const r of j.results) {
         const box = el('div', 'os-imp-src'); box.append(el('b', '', r.url.includes('credly') ? 'Credly' : 'Microsoft Learn'), el('span', 'os-mut', ' · ' + t('found', { n: r.found })));
@@ -759,9 +774,18 @@ function OpenSelfUI(root, host) {
       if (!j.changed) out.append(el('p', 'os-mut', t('nothingToChange')));
       go.disabled = !j.changed;
     };
+    const run = async dry => {
+      msg.textContent = ''; pre.disabled = go.disabled = true; status(t('preview') + ' …', 'busy');
+      const j = await (dry ? host.post('import', { urls: urls(), dry_run: true }) : post('import', { urls: urls() }));
+      status(''); pre.disabled = false;
+      if (!j.ok) { msg.textContent = j.message || t('couldNot'); return; }
+      if (!dry) { d.close(); PF.news = null; toast(j.changed ? t('imported') : t('nothingToChange')); await load(); return; }
+      show(j);
+    };
     pre.onclick = () => run(true); go.onclick = () => run(false); cancel.onclick = () => d.close();
     ta.oninput = () => { go.disabled = true; };
     d.showModal(); ta.focus();
+    if (ready) show(ready);
   }
   async function removeEntry(e) {
     const reason = prompt(t('removeWhy', { t: titleOf(e) }), ''); if (!reason || !reason.trim()) return;
