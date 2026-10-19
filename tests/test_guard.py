@@ -70,6 +70,8 @@ class Guard(unittest.TestCase):
         git(self.home, "remote", "add", "origin", self.remote)
         sync.push(self.home, upload=False)  # installs the hooks
         git(self.home, "push", "-q", "-u", "origin", "HEAD")
+        branch = git(self.home, "symbolic-ref", "HEAD").stdout.strip()
+        git(self.remote, "symbolic-ref", "HEAD", branch)  # so clones check out the home's branch
 
     def tearDown(self):
         os.environ.clear()
@@ -113,7 +115,7 @@ class Guard(unittest.TestCase):
 
     def test_allow_list_extends(self):
         with open(os.path.join(self.home, ".openself", "allow"), "w") as f:
-            f.write("docs/*\nprofile/sneaky.md\n")
+            f.write("docs/*\n")
         os.makedirs(os.path.join(self.home, "docs"))
         with open(os.path.join(self.home, "docs", "how.md"), "w") as f:
             f.write("how to\n")
@@ -122,6 +124,38 @@ class Guard(unittest.TestCase):
         stage_plaintext(self.home)
         self.assertTrue(guard.check(self.home, "pre-commit"))  # profile/ can never be allowed
 
+    def test_allow_list_refuses_profile_and_wildcards(self):
+        with open(os.path.join(self.home, ".openself", "allow"), "w") as f:
+            f.write("profile/sneaky.md\n*\n*.md\n")
+        with open(os.path.join(self.home, "dump.md"), "w") as f:
+            f.write("anything\n")
+        git(self.home, "add", ".openself/allow", "dump.md")
+        bad = guard.check(self.home, "pre-commit")
+        self.assertIn(".openself/allow:1: profile/ can never be allowed", bad)
+        self.assertTrue(any(b.startswith(".openself/allow:2: a pattern must start with a fixed name") for b in bad))
+        self.assertTrue(any(b.startswith(".openself/allow:3:") for b in bad))
+        self.assertTrue(any(b.startswith("dump.md: not allowed") for b in bad))
+
+    def test_an_allowed_file_with_profile_text_is_refused(self):
+        with open(os.path.join(self.home, "README.md"), "w") as f:
+            f.write("Notes: Ola Eksempel worked at Eksempel Konsulent AS.\n")
+        git(self.home, "add", "README.md")
+        r = git(self.home, "commit", "-m", "readme", check=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("README.md: contains text from the profile", r.stderr)
+        self.assertIn("the name in person.md", r.stderr)
+        self.assertNotIn("Ola Eksempel", r.stderr)  # says where, never repeats the text
+
+    def test_profile_age_with_text_after_the_header_is_refused(self):
+        with open(os.path.join(self.home, "profile.age"), "wb") as f:
+            f.write(b"age-encryption.org/v1\n-> X25519 abc\nAAAA\n--- mac\n" + b"plain words about a person " * 4)
+        git(self.home, "add", "profile.age")
+        self.assertIn("profile.age: contains readable data, not only ciphertext", guard.check(self.home, "pre-commit"))
+        with open(os.path.join(self.home, "profile.age"), "wb") as f:
+            f.write(b"age-encryption.org/v1\nname: Ola\n")
+        git(self.home, "add", "profile.age")
+        self.assertTrue(any("not age-encrypted" in b for b in guard.check(self.home, "pre-commit")))
+
     def test_pre_push_refuses_what_slipped_past_a_commit(self):
         stage_plaintext(self.home)
         git(self.home, "commit", "-q", "--no-verify", "-m", "oops")
@@ -129,6 +163,85 @@ class Guard(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("decrypted profile must never be committed", r.stderr)
         self.assertEqual(git(self.remote, "log", "--format=%s", "-1", "main").stdout.strip(), "Encrypted profile snapshot")
+
+    def test_pre_push_checks_a_force_push_over_commits_not_fetched(self):
+        other = os.path.join(self.tmp, "other")
+        subprocess.run(["git", "clone", "-q", self.remote, other], check=True)
+        with open(os.path.join(other, "README.md"), "w") as f:
+            f.write("hello\n")
+        git(other, "add", "README.md")
+        git(other, "commit", "-q", "--no-verify", "-m", "readme")
+        git(other, "push", "-q", "--no-verify", "origin", "HEAD")
+        with open(os.path.join(self.home, "leak.txt"), "w") as f:
+            f.write("private\n")
+        git(self.home, "add", "leak.txt")
+        git(self.home, "commit", "-q", "--no-verify", "-m", "leak")
+        r = git(self.home, "push", "-q", "-f", "origin", "HEAD", check=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("leak.txt: not allowed", r.stderr)
+
+    def test_push_checks_every_outgoing_commit_not_just_the_last(self):
+        with open(os.path.join(self.home, "leak.txt"), "w") as f:
+            f.write("private\n")
+        git(self.home, "add", "leak.txt")
+        git(self.home, "commit", "-q", "--no-verify", "-m", "leak")
+        git(self.home, "rm", "-q", "leak.txt")
+        git(self.home, "commit", "-q", "--no-verify", "-m", "gone again")
+        for name in ("pre-commit", "pre-push"):
+            os.remove(os.path.join(self.home, ".git", "hooks", name))  # as if the hooks were never there
+        self.touch_profile()
+        with self.assertRaises(sync.SyncError) as e:
+            sync.push(self.home)
+        self.assertIn("leak.txt: not allowed", str(e.exception))
+        self.assertNotIn("leak", git(self.remote, "log", "--format=%s", "HEAD").stdout)
+
+    def test_push_refuses_when_another_hook_is_in_the_way(self):
+        with open(os.path.join(self.home, ".git", "hooks", "pre-push"), "w") as f:
+            f.write("#!/bin/sh\nexit 0\n")
+        self.touch_profile()
+        with self.assertRaises(sync.SyncError) as e:
+            sync.push(self.home)
+        self.assertIn("another tool's hook is in the way", str(e.exception))
+
+    def test_push_commits_only_its_own_files(self):
+        with open(os.path.join(self.home, "README.md"), "w") as f:
+            f.write("staged, not meant for the snapshot\n")
+        git(self.home, "add", "README.md")
+        self.touch_profile()
+        self.assertTrue(sync.push(self.home)["uploaded"])
+        self.assertEqual(git(self.remote, "ls-tree", "--name-only", "HEAD", "README.md").stdout, "")
+        self.assertIn("README.md", git(self.home, "diff", "--cached", "--name-only").stdout)  # still staged, still yours
+
+    def test_a_recipient_that_arrives_with_a_pull_needs_approval(self):
+        other = os.path.join(self.tmp, "other")
+        subprocess.run(["git", "clone", "-q", self.remote, other], check=True)
+        stranger = sync.public_key(sync.new_key())
+        with open(os.path.join(other, ".openself", "recipients"), "a") as f:
+            f.write("# key added 2026-10-19\n" + stranger + "\n")
+        git(other, "commit", "-q", "--no-verify", "-am", "a key")
+        git(other, "push", "-q", "--no-verify", "origin", "HEAD")
+        sync.pull(self.home)
+        self.touch_profile()
+        with self.assertRaises(sync.SyncError) as e:
+            sync.push(self.home)
+        self.assertIn("keys this machine has not approved", str(e.exception))
+        self.assertIn(sync.short_key(stranger), str(e.exception))
+        self.assertEqual(sync.trust(self.home, [stranger]), [stranger])
+        self.assertTrue(sync.push(self.home)["uploaded"])
+
+    def test_history_check_finds_an_old_leak(self):
+        self.assertEqual(guard.check_history(self.home), [])
+        stage_plaintext(self.home)
+        git(self.home, "commit", "-q", "--no-verify", "-m", "oops")
+        git(self.home, "rm", "-q", "--cached", "profile/person.md")
+        git(self.home, "commit", "-q", "--no-verify", "-m", "undo")
+        self.assertTrue(any("decrypted profile must never be committed" in b for b in guard.check_history(self.home)))
+
+    def touch_profile(self):
+        p = sync.profile_dir(self.home)
+        with open(os.path.join(p, "person.md"), "a") as f:
+            f.write("\n")
+        history.commit(p, history.message("person", "touch", "tool"))
 
     def test_push_refuses_to_upload_when_the_home_is_unsafe(self):
         stage_plaintext(self.home)

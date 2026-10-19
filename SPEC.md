@@ -253,10 +253,20 @@ the user merges with git.
 A tool that writes to a home must never let it publish plaintext. `openself guard` checks the
 index before a commit and every outgoing commit before a push, and refuses anything under
 `profile/`, any file outside an allow list (the files above, the tools next to them, and globs in
-`.openself/allow`), a `profile.age` without the age header or with readable profile data in it,
-and anything but public keys in the recipients file. It runs as git pre-commit and pre-push hooks,
-which `openself` installs on every push and pull, and again before each upload. Encrypting needs
-only the public keys, so a tool (or an AI) can push without ever holding the secret key.
+`.openself/allow` that start with a fixed name), an allowed file that contains the person's name,
+email or phone, an employer or a customer from the decrypted profile, a `profile.age` that is not
+an age header followed by ciphertext only, and anything but public keys in the recipients file.
+Whatever git cannot read counts as a problem. It runs as git pre-commit and pre-push hooks, which
+`openself` installs on every push and pull (a push refuses when another tool's hook is in the
+way), and again on every outgoing commit before each upload. `openself guard --history` checks
+every commit, for CI. A push commits only `profile.age`, the recipients and `.gitignore`.
+
+The recipients file comes in with every pull, so a tool never encrypts to a key just because it is
+listed there. Each machine keeps the keys it has approved inside its `.git` folder, where no pull
+reaches; the first sync on a machine approves the list as it is, `openself keys` approves the
+machine's own key, and a push refuses while the file holds any other key until the owner runs
+`openself trust`. Encrypting needs only the public keys, so a tool (or an AI) can push without
+ever holding the secret key.
 
 ## 8. Privacy
 

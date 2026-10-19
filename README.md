@@ -79,8 +79,15 @@ what Bitwarden returns opens the profile, sets up the command, and offers to del
 copy.
 
 A home never publishes plaintext: `openself guard` runs as git pre-commit and pre-push hooks
-(installed by every push and pull) and before each upload, and refuses anything from `profile/`,
-any unexpected file, an unencrypted `profile.age`, or anything but public keys in the recipients.
+(installed by every push and pull) and on every outgoing commit before each upload, and refuses
+anything from `profile/`, any unexpected file, an allowed file that quotes the profile (your name,
+email, phone, employers, customers), an unencrypted `profile.age`, or anything but public keys in
+the recipients. It fails closed: what it cannot read, it refuses.
+
+A key that shows up in `.openself/recipients` (with a pull, say) is not used until you approve it
+on this machine: push stops and lists it. Run `openself trust` to approve a key that is yours, for
+example a new machine's; otherwise remove it. `openself guard --history` checks every commit, which
+the template runs in CI so a bad push at least turns red.
 Pushing only needs the public keys, so an AI can encrypt and push changes without access to the
 secret key; decrypting stays with you.
 

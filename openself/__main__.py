@@ -19,7 +19,10 @@
   keys [HOME] [--bitwarden]                       make this machine's key and add it to HOME's recipients;
                                                   --bitwarden moves the key into Bitwarden instead
   guard [HOME] [--hook pre-commit|pre-push]       refuse if the home repository would publish anything
-                                                  unencrypted (also run by git hooks, push and pull)
+        [--history]                               unencrypted (also run by git hooks, push and pull);
+                                                  --history checks every commit (for CI)
+  trust [HOME] [--yes]                            approve the recipients this machine has not seen yet
+                                                  (push refuses to encrypt to a key not approved here)
   push [HOME]                                     encrypt profile/ into profile.age, commit and push
   pull [HOME]                                     fetch profile.age, decrypt it into profile/
 
@@ -61,11 +64,16 @@ def main(argv=None):
         sub.add_parser(name).add_argument("dir", nargs="?")
     p = sub.add_parser("keys"); p.add_argument("dir", nargs="?"); p.add_argument("--bitwarden", action="store_true")
     p = sub.add_parser("guard"); p.add_argument("dir", nargs="?"); p.add_argument("--hook", choices=["pre-commit", "pre-push"])
+    p.add_argument("--history", action="store_true")
+    p = sub.add_parser("trust"); p.add_argument("dir", nargs="?"); p.add_argument("--yes", action="store_true")
     a = ap.parse_args(argv)
 
     if a.cmd == "guard":
         home = sync.find_home(a.dir or ".") or os.path.abspath(a.dir or ".")
-        bad = guard.check(home, a.hook, sys.stdin.read() if a.hook == "pre-push" else "")
+        if a.history:
+            bad = guard.check_history(home)
+        else:
+            bad = guard.check(home, a.hook, sys.stdin.read() if a.hook == "pre-push" else "")
         if bad:
             print("openself guard: refusing, this would publish something unencrypted or unexpected:", file=sys.stderr)
             for b in bad:
@@ -73,6 +81,29 @@ def main(argv=None):
             return 1
         if not a.hook:
             print("ok: only the encrypted profile and its tools")
+        return 0
+    if a.cmd == "trust":
+        home = sync.find_home(a.dir or ".")
+        if not home:
+            print("not in an OpenSelf home folder", file=sys.stderr)
+            return 1
+        sync.start_trust(home)
+        new = sync.untrusted(home)
+        if not new:
+            print("every recipient is already approved on this machine")
+            return 0
+        print("These keys in .openself/recipients can decrypt profile.age once you push, and are not approved here:")
+        for k, label in new:
+            print(f"  {sync.short_key(k)}" + (f"  ({label})" if label else ""))
+        if not a.yes:
+            if not sys.stdin.isatty():
+                print("not approved: run this in a terminal, or with --yes", file=sys.stderr)
+                return 1
+            if input("Are all of them yours, or people you mean to share with? [y/N] ").strip().lower() != "y":
+                print("nothing approved; remove the keys you do not know from .openself/recipients")
+                return 1
+        sync.trust(home, [k for k, _ in new])
+        print(f"approved {len(new)}")
         return 0
     if a.cmd in ("serve", "keys", "push", "pull"):
         home = sync.find_home(a.dir or ".")
