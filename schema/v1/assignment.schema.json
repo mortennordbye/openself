@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/mortennordbye/openself/main/schema/v1/assignment.schema.json",
+  "title": "Assignment",
+  "description": "One assignment, portfolio of customers or internal project, under one employment.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "description": "Schema version of this file.",
+      "enum": [
+        "1"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "description": "Stable id. Equal to the file name without .md. Never changed or reused.",
+      "pattern": "^[a-z0-9][a-z0-9-]{2,80}$"
+    },
+    "type": {
+      "type": "string",
+      "description": "Entry type.",
+      "enum": [
+        "assignment"
+      ]
+    },
+    "kind": {
+      "type": "string",
+      "description": "client: work for one customer. portfolio: ongoing work for several customers. internal: for the employer itself, open source and the like.",
+      "enum": [
+        "client",
+        "portfolio",
+        "internal"
+      ]
+    },
+    "employment": {
+      "type": "string",
+      "description": "Id of the employment this assignment was done under.",
+      "pattern": "^(|[a-z0-9][a-z0-9-]{2,80})$"
+    },
+    "customer": {
+      "type": "string",
+      "description": "The customer's real name. Empty for internal work."
+    },
+    "customers": {
+      "type": "array",
+      "description": "For a portfolio: every customer in it.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "customer_public": {
+      "type": "string",
+      "description": "Whether the customer may be named outside the profile: public, anonymised (use the alias), nda (ask before mentioning at all), unknown (treat as anonymised and ask).",
+      "enum": [
+        "",
+        "public",
+        "anonymised",
+        "nda",
+        "unknown"
+      ]
+    },
+    "customer_alias": {
+      "type": "string",
+      "description": "How to describe the customer when it may not be named, e.g. 'a Norwegian public transport company'."
+    },
+    "sector": {
+      "type": "string",
+      "description": "The customer's sector, e.g. 'public transport', 'banking'."
+    },
+    "role": {
+      "type": "string",
+      "description": "The owner's role on the assignment, as they describe it."
+    },
+    "role_en": {
+      "type": "string",
+      "description": "Vetted English version of role, when the profile is not in English.",
+      "x-scaffold": false
+    },
+    "start": {
+      "type": "string",
+      "description": "First month, YYYY-MM (YYYY when the month is not known).",
+      "pattern": "^(|\\d{4}(-(0[1-9]|1[0-2]))?)$"
+    },
+    "end": {
+      "type": "string",
+      "description": "Last month, YYYY-MM, or 'ongoing'.",
+      "pattern": "^(|\\d{4}(-(0[1-9]|1[0-2]))?|ongoing)$"
+    },
+    "breaks": {
+      "type": "array",
+      "description": "Periods inside start-end when the owner was away, YYYY-MM/YYYY-MM (both months included).",
+      "items": {
+        "type": "string",
+        "pattern": "^\\d{4}-(0[1-9]|1[0-2])/\\d{4}-(0[1-9]|1[0-2])$"
+      }
+    },
+    "allocation": {
+      "type": "string",
+      "description": "Share of full time, in percent. Empty when not known.",
+      "pattern": "^(|\\d{1,4})$",
+      "x-coerce": "integer"
+    },
+    "team_size": {
+      "type": "string",
+      "description": "Number of people on the team, the owner included. Empty when not known.",
+      "pattern": "^(|\\d{1,4})$",
+      "x-coerce": "integer"
+    },
+    "tech": {
+      "type": "array",
+      "description": "Technologies the owner used in practice on this assignment, by canonical name (tech-names.txt).",
+      "items": {
+        "type": "string"
+      }
+    },
+    "methods": {
+      "type": "array",
+      "description": "Methods and practices, e.g. GitOps, Scrum.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sources": {
+      "type": "array",
+      "description": "Where the facts come from, as labels (never paths): 'interview 2026-05-13', 'intake:old-cv.pdf', 'linkedin', 'self-edit 2026-10-20'.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "confidence": {
+      "type": "string",
+      "description": "How sure the facts are: verified (the owner checked this entry), stated (the owner said it), old-cv, linkedin, needs-confirmation. Empty means not assessed.",
+      "enum": [
+        "",
+        "verified",
+        "stated",
+        "old-cv",
+        "linkedin",
+        "needs-confirmation"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "description": "active, or removed (only in _removed/).",
+      "enum": [
+        "",
+        "active",
+        "removed"
+      ]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "Date the entry was last checked or changed (YYYY-MM-DD).",
+      "pattern": "^(|\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01]))$"
+    },
+    "removed": {
+      "type": "string",
+      "description": "Date the entry was removed.",
+      "pattern": "^(|\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01]))$",
+      "x-scaffold": false
+    },
+    "removed_reason": {
+      "type": "string",
+      "description": "Why the entry was removed, in the owner's words.",
+      "x-scaffold": false
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "type",
+    "kind",
+    "employment",
+    "start"
+  ],
+  "patternProperties": {
+    "^x-[a-z0-9][a-z0-9-]*$": {}
+  },
+  "additionalProperties": false,
+  "x-sections": [
+    "summary",
+    "challenge",
+    "contribution",
+    "outcome",
+    "tech-in-practice",
+    "own-words",
+    "reference",
+    "other",
+    "flags"
+  ]
+}

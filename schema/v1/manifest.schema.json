@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/mortennordbye/openself/main/schema/v1/manifest.schema.json",
+  "title": "Profile manifest (openself.json)",
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "openself"
+    },
+    "schema": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "owner": {
+      "type": "string",
+      "description": "Owner's name."
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z]{2}$"
+      },
+      "description": "Languages the entries are written in; the first is the main one and sets the section headings."
+    },
+    "readonly": {
+      "type": "boolean",
+      "description": "True for a copy that must not be edited (a decrypted checkout)."
+    },
+    "spec": {
+      "type": "string",
+      "description": "URL of the spec this profile follows."
+    }
+  },
+  "required": [
+    "format",
+    "schema",
+    "languages"
+  ],
+  "additionalProperties": true
+}

@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/mortennordbye/openself/main/schema/v1/person.schema.json",
+  "title": "Person",
+  "description": "The owner: name, title, languages, clearance, public links.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "description": "Schema version of this file.",
+      "enum": [
+        "1"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "description": "Stable id. Equal to the file name without .md. Never changed or reused.",
+      "pattern": "^person$"
+    },
+    "type": {
+      "type": "string",
+      "description": "Entry type.",
+      "enum": [
+        "person"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "description": "Full name."
+    },
+    "title": {
+      "type": "string",
+      "description": "Title today."
+    },
+    "location": {
+      "type": "string",
+      "description": "Where the owner lives or works."
+    },
+    "languages": {
+      "type": "array",
+      "description": "Languages with level, e.g. 'Norwegian (native)'.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "clearance": {
+      "type": "string",
+      "description": "Security clearance level, or 'none'."
+    },
+    "clearance_valid_until": {
+      "type": "string",
+      "description": "YYYY-MM-DD.",
+      "pattern": "^(|\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01]))$"
+    },
+    "email": {
+      "type": "string",
+      "description": "Contact e-mail the owner wants used."
+    },
+    "phone": {
+      "type": "string",
+      "description": "Contact phone the owner wants used."
+    },
+    "linkedin": {
+      "type": "string",
+      "description": "LinkedIn URL."
+    },
+    "github": {
+      "type": "string",
+      "description": "GitHub URL."
+    },
+    "links": {
+      "type": "array",
+      "description": "Other public profiles or portfolio links.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sources": {
+      "type": "array",
+      "description": "Where the facts come from, as labels (never paths): 'interview 2026-05-13', 'intake:old-cv.pdf', 'linkedin', 'self-edit 2026-10-20'.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "confidence": {
+      "type": "string",
+      "description": "How sure the facts are: verified (the owner checked this entry), stated (the owner said it), old-cv, linkedin, needs-confirmation. Empty means not assessed.",
+      "enum": [
+        "",
+        "verified",
+        "stated",
+        "old-cv",
+        "linkedin",
+        "needs-confirmation"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "description": "active, or removed (only in _removed/).",
+      "enum": [
+        "",
+        "active",
+        "removed"
+      ]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "Date the entry was last checked or changed (YYYY-MM-DD).",
+      "pattern": "^(|\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01]))$"
+    },
+    "removed": {
+      "type": "string",
+      "description": "Date the entry was removed.",
+      "pattern": "^(|\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01]))$",
+      "x-scaffold": false
+    },
+    "removed_reason": {
+      "type": "string",
+      "description": "Why the entry was removed, in the owner's words.",
+      "x-scaffold": false
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "type"
+  ],
+  "patternProperties": {
+    "^x-[a-z0-9][a-z0-9-]*$": {}
+  },
+  "additionalProperties": false,
+  "x-sections": [
+    "about",
+    "other",
+    "flags"
+  ]
+}

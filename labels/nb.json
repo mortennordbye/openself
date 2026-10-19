@@ -1,0 +1,79 @@
+{
+  "language": "nb",
+  "sections": {
+    "assignment": {
+      "summary": "Hva oppdraget var",
+      "challenge": "Utfordring",
+      "contribution": "Eget bidrag",
+      "outcome": "Resultat",
+      "tech-in-practice": "Teknologi i praksis",
+      "own-words": "Brukerens ord",
+      "reference": "Referanse (privat)",
+      "other": "Annet",
+      "flags": "Flagg"
+    },
+    "employment": {
+      "summary": "Hva jobben egentlig var",
+      "tech-in-practice": "Teknologi i praksis",
+      "own-words": "Brukerens ord",
+      "other": "Annet",
+      "flags": "Flagg"
+    },
+    "person": {"about": "Om meg", "other": "Annet", "flags": "Flagg"},
+    "certifications": {"other": "Annet", "flags": "Flagg"},
+    "education": {"other": "Annet", "flags": "Flagg"}
+  },
+  "tables": {
+    "certifications": ["Navn", "Utsteder", "Dato", "Utløper", "Kilde"],
+    "education": ["Grad / fagbrev", "Skole", "Fra", "Til", "Kilde"]
+  },
+  "flags": {
+    "question": "spørsmål",
+    "conflict": "konflikt",
+    "emphasis": "vekt",
+    "omit": "utelat",
+    "correction": "retting",
+    "resolved": "løst",
+    "answer": "Svar"
+  },
+  "types": {
+    "person": "Person",
+    "certifications": "Sertifiseringer",
+    "education": "Utdanning",
+    "employment": "Ansettelse",
+    "assignment": "Oppdrag"
+  },
+  "enums": {
+    "kind": {"client": "kundeoppdrag", "portfolio": "kundeportefølje", "internal": "internt"},
+    "customer_public": {"public": "kan navngis", "anonymised": "anonymisert", "nda": "taushetsplikt", "unknown": "ikke avklart"},
+    "confidence": {"verified": "bekreftet", "stated": "oppgitt", "old-cv": "fra gammel CV", "linkedin": "fra LinkedIn", "needs-confirmation": "må bekreftes"},
+    "employment_type": {"permanent": "fast", "contract": "innleid", "fixed-term": "engasjement", "military-service": "verneplikt", "freelance": "frilans", "other": "annet"},
+    "status": {"active": "aktiv", "removed": "fjernet"}
+  },
+  "fields": {
+    "kind": "Type", "employment": "Ansettelse", "customer": "Kunde", "customers": "Kunder",
+    "customer_public": "Kan navngis", "customer_alias": "Omtale når anonym", "sector": "Bransje",
+    "role": "Rolle", "start": "Fra", "end": "Til", "breaks": "Pauser", "allocation": "Stillingsandel (%)",
+    "team_size": "Teamstørrelse", "tech": "Teknologi", "methods": "Metoder", "sources": "Kilder",
+    "confidence": "Sikkerhet", "last_reviewed": "Sist sjekket", "employer": "Arbeidsgiver",
+    "title": "Tittel", "location": "Sted", "employment_type": "Ansettelsesform", "name": "Navn",
+    "languages": "Språk", "clearance": "Sikkerhetsklarering", "clearance_valid_until": "Klarering gyldig til",
+    "email": "E-post", "phone": "Telefon", "linkedin": "LinkedIn", "github": "GitHub", "links": "Lenker",
+    "ongoing": "pågår"
+  },
+  "index": {
+    "title": "Indeks",
+    "generated": "Generert av openself. Ikke rediger; kjør `python3 -m openself index`.",
+    "employments": "Ansettelser",
+    "assignments": "Oppdrag",
+    "tech": "Teknologi og bevis",
+    "open": "Åpne spørsmål og konflikter",
+    "removed": "Fjernede oppføringer",
+    "months": "mnd",
+    "period": "Periode",
+    "id": "Id",
+    "top_tech": "Teknologi",
+    "evidence": "Oppdrag",
+    "none": "Ingen."
+  }
+}

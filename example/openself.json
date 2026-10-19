@@ -1,0 +1,11 @@
+{
+  "format": "openself",
+  "schema": 1,
+  "owner": "Ola Eksempel",
+  "languages": [
+    "nb",
+    "en"
+  ],
+  "readonly": false,
+  "spec": "https://github.com/mortennordbye/openself/blob/main/SPEC.md"
+}

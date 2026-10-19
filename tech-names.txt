@@ -1,0 +1,168 @@
+# Canonical technology names. One per line: Canonical name | alias, alias
+# Profiles store the canonical name in `tech`; lint suggests it when an alias is used.
+# Generic vocabulary only. Add a name by PR when a profile needs it.
+
+# Cloud platforms and services
+Azure | microsoft azure, ms azure
+AWS | amazon web services
+Google Cloud | gcp, google cloud platform
+Azure Kubernetes Service | aks
+Amazon EKS | eks
+Google Kubernetes Engine | gke
+Azure DevOps | ado, vsts, azure devops services
+Azure Front Door | front door, afd
+Azure Virtual WAN | vwan, virtual wan
+Azure Container Registry | acr
+Azure Functions
+Azure App Service | app service
+Azure Monitor
+Azure Policy
+Entra ID | azure ad, azure active directory, aad
+Microsoft 365 | m365, office 365, o365
+OpenStack
+VMware vSphere | vsphere, vmware, esxi
+Hyper-V | hyperv
+Proxmox | proxmox ve
+
+# Containers and orchestration
+Kubernetes | k8s, kube
+OpenShift | openshift container platform, ocp
+Docker | docker engine
+Podman
+Helm | helm charts
+Kustomize
+Argo CD | argocd, argo-cd, argo
+Flux | fluxcd, flux cd
+Traefik
+NGINX | nginx ingress, ingress-nginx
+Gateway API | kubernetes gateway api
+Istio
+Linkerd
+Cilium
+Talos Linux | talos
+Rancher
+k3s
+
+# Infrastructure as code and configuration
+Terraform | tf
+OpenTofu
+Bicep | azure bicep
+ARM templates | arm, azure resource manager templates
+Pulumi
+Ansible
+Puppet
+Chef
+Packer
+Crossplane
+CloudFormation | aws cloudformation
+
+# CI/CD and source control
+GitHub Actions | gh actions
+GitLab CI | gitlab ci/cd, gitlab-ci
+Jenkins
+TeamCity
+Git
+GitHub
+GitLab
+Bitbucket
+
+# Observability
+Prometheus
+Grafana
+Loki | grafana loki
+Tempo | grafana tempo
+OpenTelemetry | otel
+Datadog
+Elastic Stack | elk, elastic, kibana, logstash
+Splunk
+Zabbix
+Nagios
+PagerDuty
+Azure Application Insights | application insights, app insights
+
+# Operating systems
+Linux
+Red Hat Enterprise Linux | rhel, red hat
+Ubuntu
+Debian
+CentOS
+Windows Server | windows server 2019, windows server 2022
+macOS | mac os, osx
+
+# Databases and messaging
+PostgreSQL | postgres, psql
+MySQL
+MariaDB
+Microsoft SQL Server | sql server, mssql
+Oracle Database | oracle db
+MongoDB | mongo
+Redis
+Elasticsearch
+Kafka | apache kafka
+RabbitMQ
+Azure Service Bus | service bus
+Cosmos DB | azure cosmos db
+
+# Languages
+Python
+Bash | shell, shell scripting
+PowerShell | pwsh
+Go | golang
+Java
+Kotlin
+C# | csharp, c sharp
+.NET | dotnet, .net core
+JavaScript | js
+TypeScript | ts
+Node.js | node, nodejs
+Rust
+C
+C++ | cpp
+SQL
+HTML
+CSS
+YAML
+Scratch
+
+# Frameworks and web
+React | reactjs, react.js
+Vue | vuejs, vue.js
+Angular
+Next.js | nextjs
+Django
+Flask
+FastAPI
+Spring Boot | spring
+REST | rest api, restful
+GraphQL
+
+# Security and identity
+HashiCorp Vault | vault
+Keycloak
+OAuth 2.0 | oauth, oauth2
+OpenID Connect | oidc
+cert-manager
+Trivy
+SonarQube | sonar
+Microsoft Defender for Cloud | defender for cloud
+
+# Networking
+TCP/IP | tcp, ip
+DNS
+BGP
+VPN | ipsec, site-to-site vpn
+WireGuard
+Cisco IOS | cisco
+Palo Alto Networks | palo alto, pan-os
+Fortinet | fortigate
+F5 BIG-IP | f5, big-ip
+HAProxy
+Cloudflare
+
+# Collaboration and work management
+Jira
+Confluence
+ServiceNow
+TOPdesk
+Microsoft Teams | teams
+Slack
