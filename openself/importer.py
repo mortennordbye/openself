@@ -5,8 +5,8 @@
     text, summary = importer.merge(entry, certs, source) # certifications.md with them merged in
 
 Only these two hosts are fetched, and only when the owner asks. A certificate that matches a row in
-the table fills the row's empty cells, makes a year-month date exact when the two agree, and adds
-the source; a date that disagrees becomes a conflict flag for the owner, never an overwrite (SPEC
+the table fills the row's empty cells, makes a year-month date exact when the two agree, and
+becomes the row's source (hand-written labels such as raw.md give way to the account); a date that disagrees becomes a conflict flag for the owner, never an overwrite (SPEC
 rule 2). Certificates not in the table are added as new rows.
 """
 
@@ -155,9 +155,15 @@ def merge(entry, certs, source, lang=None, today=None):
                 text = words["conflict"].format(src=NAMES[source], field=words[field], name=r[0], new=new, old=old)
                 flags.append(text)
                 summary["conflicts"].append(text)
+        # A confirmed row is sourced to the account: other accounts' labels stay, hand-written ones go,
+        # and a label this account already gave is kept so importing again changes nothing.
+        parts = [x.strip() for x in r[4].split(",") if x.strip()]
+        accounts = [x for x in parts if any(x.startswith(n + " ") for n in NAMES.values())]
+        src = ", ".join(accounts if any(x.startswith(NAMES[source] + " ") for x in accounts) else accounts + [label])
+        if src != r[4]:
+            changes["source"] = [r[4], src]
+            r[4] = src
         if changes:
-            if NAMES[source].lower() not in r[4].lower():
-                r[4] = ", ".join(x for x in (r[4], label) if x)
             summary["updated"].append({"name": r[0], "changes": changes})
         else:
             summary["unchanged"] += 1

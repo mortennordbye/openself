@@ -101,7 +101,7 @@ class Import(unittest.TestCase):
         az = next(r for r in rows if r[0].startswith("Azure Administrator"))
         # 2021-11 in the table and 2021-11-20 from the page agree: the date gets exact, the expiry is filled in.
         self.assertEqual(az[2:4], ["2021-11-20", "2027-11-20"])
-        self.assertIn("Microsoft Learn 2026-10-20", az[4])
+        self.assertEqual(az[4], "Microsoft Learn 2026-10-20")  # the account replaces the hand-written source
         self.assertEqual([a["name"] for a in s["added"]], ["GitHub Actions"])
         self.assertEqual(s["conflicts"], [])
         # The example's CKA row says 2023-05 to 2026-05; a page saying another month is a conflict, not an overwrite.
@@ -113,6 +113,19 @@ class Import(unittest.TestCase):
         self.assertEqual(len(s2["conflicts"]), 1)
         self.assertIn("- ⚑ konflikt: Credly sier at datoen for «Certified Kubernetes Administrator (CKA)» er 2023-07-01; tabellen sier 2023-05.", text2)
         self.assertEqual(model.load_entry("certifications.md", text2).error, "")
+
+    def test_confirmed_row_takes_the_account_as_source(self):
+        # Nothing to fill in, but the row was sourced by hand: it becomes the account's, once.
+        same = [importer.Cert("CKA: Certified Kubernetes Administrator", "The Linux Foundation", "2023-05", "2026-05")]
+        text, s = importer.merge(self.entry(), same, "credly", "nb", today="2026-10-20")
+        cka = next(r for r in model.parse_table(model.load_entry("certifications.md", text).body) if "CKA" in r[0])
+        self.assertEqual(cka[4], "Credly 2026-10-20")
+        self.assertEqual(s["updated"][0]["changes"], {"source": ["intake:gammel-cv.pdf", "Credly 2026-10-20"]})
+        # Another account's label is kept beside it.
+        ms = [importer.Cert("Microsoft Certified: Azure Administrator Associate", "Microsoft", "2021-11", "")]
+        text2, _ = importer.merge(model.load_entry("certifications.md", text), ms, "mslearn", "nb", today="2026-10-21")
+        text3, _ = importer.merge(model.load_entry("certifications.md", text2), same, "credly", "nb", today="2026-10-22")
+        self.assertEqual(text3, text2)
 
     def test_merge_again_changes_nothing(self):
         certs, _ = importer.fetch(CREDLY_URL, fake_get)
