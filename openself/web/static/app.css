@@ -35,6 +35,13 @@ button.os-rev { cursor: pointer; } button.os-rev:hover { background: var(--os-ho
 .os-imp-src { border: 1px solid var(--os-line); border-radius: 10px; padding: 10px 12px; margin: 8px 0; background: var(--os-card); }
 .os-imp-src ul { margin: 2px 0 6px; padding-left: 20px; font-size: 12.5px; } .os-imp-h { margin-top: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
 .os-imp-h.add { color: var(--os-ok); } .os-imp-h.upd { color: var(--os-acc); } .os-imp-h.bad { color: var(--os-warn-fg); }
+.os-srcs { display: flex; flex-wrap: wrap; gap: 4px; }
+.os-src { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 5px; border-radius: 99px; font-size: 11.5px; line-height: 18px; white-space: nowrap;
+  background: var(--os-chip); color: var(--os-fg); text-decoration: none; border: 1px solid transparent; }
+.os-src .os-i { width: 12px; height: 12px; color: var(--os-mut); } .os-src small { color: var(--os-mut); font-size: 10.5px; }
+.os-src.k-credly { background: color-mix(in srgb, #ff6b00 14%, var(--os-panel)); } .os-src.k-credly .os-i { color: #ff6b00; }
+.os-src.k-mslearn { background: color-mix(in srgb, #2f7bd8 14%, var(--os-panel)); } .os-src.k-mslearn .os-i { color: #2f7bd8; }
+.os-md a.os-src, a.os-src { color: var(--os-fg); } a.os-src:hover { border-color: var(--os-line); background-image: linear-gradient(var(--os-hover), var(--os-hover)); }
 .os-dialog::backdrop { background: rgba(0,0,0,.45); } .os-dialog h2 { margin: 0 0 6px; font-size: 16px; }
 .os-dialog textarea, .os-dialog input:not([type=checkbox]) { background: var(--os-field); color: var(--os-fg); border: 1px solid var(--os-line); border-radius: 6px; padding: 7px 8px; font: inherit; width: 100%; box-sizing: border-box; }
 
