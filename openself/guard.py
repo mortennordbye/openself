@@ -1,13 +1,15 @@
 """The guard on a home repository: nothing unencrypted is ever committed or pushed.
 
-A home repository (SPEC section 7) may hold only the encrypted profile, the public keys and the
+A home repository (SPEC section 7) may hold only the encrypted profile, the encrypted vaults (more
+folders of any files, listed in .openself/config as `vaults = cv, docs`), the public keys and the
 tools around them. `check` looks at what is staged (before a commit) or at the commits about to be
 pushed, and refuses when:
 
-- a file outside the allow list is there, and above all anything from profile/ (the plaintext);
+- a file outside the allow list is there, and above all anything from profile/ or a vault folder
+  (the plaintext);
 - an allowed file carries text from the profile: the person's name, email or phone, an employer
   or a customer (only where the decrypted profile is on this machine);
-- profile.age is not an age file, or it carries readable text;
+- profile.age or a vault's <name>.age is not an age file, or it carries readable text;
 - .openself/recipients holds anything but comments and age public keys.
 
 Anything git cannot read counts as a problem, so the guard fails closed. `install` puts pre-commit
@@ -32,6 +34,8 @@ READABLE = re.compile(rb"[\t\n\r\x20-\x7e]{48,}")  # 48 printable bytes in a row
 SENSITIVE = {"person": ("name", "email", "phone"), "employment": ("employer",),
              "assignment": ("customer", "customers")}
 GITLINK = "160000"
+VAULT_NAME = re.compile(r"[a-z0-9][a-z0-9_-]{0,39}")
+NOT_VAULTS = ("profile", "openself", "self", "tools")
 ZERO = "0" * 40
 MARK = "openself guard"
 
@@ -43,9 +47,20 @@ def git(home, *args, data=False):
     return r.stdout if data else r.stdout.decode().strip()
 
 
-def allow_list(home, extra_text=None):
+def vault_names(config_text):
+    """The vault folders a home declares: `vaults = cv, docs` in .openself/config. Names that are not
+    plain lower-case folder names, or that clash with the home's own files, are ignored."""
+    for line in (config_text or "").splitlines():
+        k, sep, v = line.partition("=")
+        if sep and k.strip() == "vaults" and not k.lstrip().startswith("#"):
+            names = [n.strip() for n in v.replace(",", " ").split()]
+            return [n for n in dict.fromkeys(names) if VAULT_NAME.fullmatch(n) and n not in NOT_VAULTS]
+    return []
+
+
+def allow_list(home, extra_text=None, vaults=()):
     """(patterns, problems): the built-in allow list plus .openself/allow, minus lines that are refused."""
-    pats, bad = list(ALLOWED), []
+    pats, bad = list(ALLOWED) + [f"{v}.age" for v in vaults], []
     text = extra_text
     if text is None and os.path.exists(os.path.join(home, ".openself", "allow")):
         with open(os.path.join(home, ".openself", "allow"), encoding="utf-8") as f:
@@ -54,8 +69,8 @@ def allow_list(home, extra_text=None):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        if line.startswith("profile"):
-            bad.append(f".openself/allow:{n}: profile/ can never be allowed")
+        if line.startswith("profile") or any(line == v or line.startswith(v + "/") for v in vaults):
+            bad.append(f".openself/allow:{n}: {line.split('/')[0]}/ can never be allowed")
         elif any(c in line.split("/")[0] for c in "*?["):
             bad.append(f".openself/allow:{n}: a pattern must start with a fixed name (docs/*, not {line})")
         else:
@@ -100,19 +115,23 @@ def needles(home):
     return out
 
 
-def problems_in(files, read, home, extra_allow=None, found=()):
+def problems_in(files, read, home, extra_allow=None, found=(), vaults=()):
     """Problems with {path: mode}, given read(path) -> bytes or None for their content."""
-    pats, out = allow_list(home, extra_allow)
+    pats, out = allow_list(home, extra_allow, vaults)
+    encrypted = {"profile.age"} | {f"{v}.age" for v in vaults}
     for f in sorted(files):
-        if f == "profile" or f.startswith("profile/"):
+        top = f.split("/", 1)[0]
+        if top == "profile":
             out.append(f"{f}: the decrypted profile must never be committed")
+        elif top in vaults:
+            out.append(f"{f}: the decrypted vault {top}/ must never be committed")
         elif not any(fnmatch.fnmatch(f, p) for p in pats):
             out.append(f"{f}: not allowed in a home repository (add it to .openself/allow if it is safe)")
-        elif f == "profile.age":
+        elif f in encrypted:
             blob = read(f)
             why = "could not be read, so it cannot be checked" if blob is None else age_problem(blob)
             if why:
-                out.append(f"profile.age: {why}")
+                out.append(f"{f}: {why}")
         elif files[f] != GITLINK:
             blob = read(f)
             if blob is None:
@@ -148,8 +167,10 @@ def check_staged(home, found=None):
     if files is None:
         return ["could not read the index, so it cannot be checked"]
     allow = git(home, "show", ":.openself/allow", data=True)
+    config = git(home, "show", ":.openself/config", data=True)
     return problems_in(files, lambda p: git(home, "show", f":{p}", data=True), home,
-                       allow.decode() if allow else "", needles(home) if found is None else found)
+                       allow.decode() if allow else "", needles(home) if found is None else found,
+                       vault_names(config.decode() if config else ""))
 
 
 def check_commit(home, rev, found=None):
@@ -157,9 +178,11 @@ def check_commit(home, rev, found=None):
     if files is None:
         return [f"{rev[:7]}: could not read the commit, so it cannot be checked"]
     allow = git(home, "show", f"{rev}:.openself/allow", data=True)
+    config = git(home, "show", f"{rev}:.openself/config", data=True)
     return [f"{rev[:7]}: {p}" for p in problems_in(files, lambda p: git(home, "show", f"{rev}:{p}", data=True), home,
                                                     allow.decode() if allow else "",
-                                                    needles(home) if found is None else found)]
+                                                    needles(home) if found is None else found,
+                                                    vault_names(config.decode() if config else ""))]
 
 
 def outgoing(home, stdin_text):

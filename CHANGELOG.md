@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Vaults: a home can keep more folders of any files (documents, images, PDFs), each its own git
+  repository, declared with `vaults = ...` in `.openself/config` and encrypted into `<name>.age`
+  in the profile's format. `openself vault add` and `vault list`; push and pull handle every vault,
+  and the guard refuses a vault's plaintext and checks its `.age` (spec section 7).
+
 - Schema 1, retired: `sources` and the Source column of the certifications and education tables.
   The profile is the owner's own record and is itself the source; tools cite entry ids, and the
   history says who changed what. Older files still read; `lint` warns and `openself fmt` drops them.

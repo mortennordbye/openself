@@ -78,10 +78,28 @@ vault is locked and `openself` runs in a terminal, it asks for the master passwo
 what Bitwarden returns opens the profile, sets up the command, and offers to delete the Keychain
 copy.
 
+### Vaults: any other files, encrypted the same way
+
+A home can keep more than the profile. A *vault* is a folder of any files (documents, images,
+PDFs, CVs, notes), versioned with git and pushed encrypted next to the profile:
+
+```
+python3 -m openself vault add cv     # cv/ (a git repository, kept out of the home's git), listed in .openself/config
+cp ~/Downloads/*.pdf cv/             # anything
+python3 -m openself push             # cv/ is committed and encrypted into cv.age, every version
+python3 -m openself pull             # on another machine: profile/ and cv/ come back
+python3 -m openself vault list       # each vault, and whether it has changes to push
+```
+
+Each vault is its own `<name>.age`, in the same format as `profile.age`, so only the vault that
+changed is uploaded again. GitHub refuses files over 100 MB, so push stops before a vault gets
+there; split large collections into more vaults. Every version stays in the history (and in the
+public history of the encrypted file), so a vault suits documents you keep, not media you churn.
+
 A home never publishes plaintext: `openself guard` runs as git pre-commit and pre-push hooks
 (installed by every push and pull) and on every outgoing commit before each upload, and refuses
-anything from `profile/`, any unexpected file, an allowed file that quotes the profile (your name,
-email, phone, employers, customers), an unencrypted `profile.age`, or anything but public keys in
+anything from `profile/` or a vault folder, any unexpected file, an allowed file that quotes the profile (your name,
+email, phone, employers, customers), an unencrypted `profile.age` or vault file, or anything but public keys in
 the recipients. It fails closed: what it cannot read, it refuses.
 
 A key that shows up in `.openself/recipients` (with a pull, say) is not used until you approve it

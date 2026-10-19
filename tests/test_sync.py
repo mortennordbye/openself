@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
 
-from openself import history, model, sync, write  # noqa: E402
+from openself import guard, history, model, sync, write  # noqa: E402
 from openself.__main__ import make_home  # noqa: E402
 
 GIT_ENV = {"GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "test@example.invalid",
@@ -83,6 +83,95 @@ class Sync(unittest.TestCase):
         subprocess.run(["git", "-C", self.a, "checkout", "-q", "FETCH_HEAD", "--", "profile.age"], check=True)
         with self.assertRaises(sync.SyncError):
             sync.pull(self.a, download=False)
+
+    def start_profile(self, home):
+        p = sync.profile_dir(home)
+        shutil.copytree(os.path.join(ROOT, "example"), p)
+        subprocess.run(["git", "init", "-q", "-b", "main", p], check=True)
+        history.commit(p, history.message("profile", "start", "tool"))
+        sync.keys_init(home)
+        return p
+
+    def test_vaults_round_trip_any_files(self):
+        self.start_profile(self.a)
+        v = sync.add_vault(self.a, "cv")
+        self.assertEqual(sync.vaults(self.a), ["cv"])
+        sync.add_vault(self.a, "cv")  # again: no second entry
+        with open(os.path.join(self.a, ".openself", "config")) as f:
+            self.assertEqual(f.read().count("vaults"), 1)
+        with open(os.path.join(self.a, ".gitignore")) as f:
+            self.assertIn("/cv/", f.read().splitlines())
+        image = bytes(range(256)) * 300  # binary, like a photo or a PDF
+        os.makedirs(os.path.join(v, "releases"))
+        with open(os.path.join(v, "releases", "cv-v1.pdf"), "wb") as f:
+            f.write(b"%PDF-1.7 Kari Hansen CV\n" + image)
+        with open(os.path.join(v, "notes.md"), "w") as f:
+            f.write("Applied to Vestkraft.\n")
+        r = sync.push(self.a)
+        self.assertEqual(sorted(r["encrypted"]), ["cv", "profile"])
+        tracked = subprocess.run(["git", "-C", self.a, "ls-files"], capture_output=True, text=True).stdout.split()
+        self.assertEqual(sorted(tracked), [".gitignore", ".openself/config", ".openself/recipients", "cv.age", "profile.age"])
+        with open(os.path.join(self.a, "cv.age"), "rb") as f:
+            blob = f.read()
+        self.assertNotIn(b"Vestkraft", blob)
+        self.assertNotIn(b"%PDF", blob)
+        self.assertEqual(guard.check_history(self.a), [])
+        self.assertTrue(sync.push(self.a)["unchanged"])
+
+        # Only the vault changed: only cv.age is encrypted again.
+        with open(os.path.join(v, "notes.md"), "a") as f:
+            f.write("Interview booked.\n")
+        r = sync.push(self.a)
+        self.assertEqual(list(r["encrypted"]), ["cv"])
+        self.assertEqual(len(history.log(v)), 3)  # created, first push, second push
+
+        # A second machine gets every version of every file.
+        b = os.path.join(self.tmp, "b")
+        subprocess.run(["git", "clone", "-q", self.a, b], check=True)
+        r = sync.pull(b, download=False)
+        self.assertEqual((r["result"], r["vaults"]["cv"]["result"]), ("cloned", "cloned"))
+        with open(os.path.join(b, "cv", "releases", "cv-v1.pdf"), "rb") as f:
+            self.assertTrue(f.read().endswith(image))
+        self.assertEqual(len(history.log(os.path.join(b, "cv"))), 3)
+        self.assertEqual(sync.status(b)["vaults"]["cv"]["here"], True)
+
+    def test_vault_not_here_is_left_alone(self):
+        self.start_profile(self.a)
+        v = sync.add_vault(self.a, "docs")
+        with open(os.path.join(v, "a.txt"), "w") as f:
+            f.write("x\n")
+        sync.push(self.a)
+        with open(os.path.join(self.a, "docs.age"), "rb") as f:
+            before = f.read()
+        shutil.rmtree(v)  # as on a machine that has not pulled it
+        with open(os.path.join(sync.profile_dir(self.a), "person.md"), "a") as f:
+            f.write("\n")
+        r = sync.push(self.a)
+        self.assertEqual(r["missing"], ["docs"])
+        with open(os.path.join(self.a, "docs.age"), "rb") as f:
+            self.assertEqual(f.read(), before)
+        self.assertEqual(sync.pull(self.a, download=False)["vaults"]["docs"]["result"], "cloned")
+
+    def test_bad_vault_names(self):
+        for name in ("profile", "Cv", "../x", "a b", ""):
+            with self.assertRaises(sync.SyncError):
+                sync.add_vault(self.a, name)
+        self.assertEqual(guard.vault_names("vaults = cv, docs,Bad, profile ../x\n# vaults = old"), ["cv", "docs"])
+
+    def test_guard_refuses_plaintext_vault(self):
+        self.start_profile(self.a)
+        v = sync.add_vault(self.a, "cv")
+        with open(os.path.join(v, "cv.html"), "w") as f:
+            f.write("<p>hi</p>\n")
+        sync.push(self.a, upload=False)
+        subprocess.run(["git", "-C", self.a, "add", "-f", "cv"], check=True, capture_output=True)  # a vault is a repo: git links it
+        bad = guard.check(self.a, "pre-commit")
+        self.assertTrue(any(b.startswith("cv: the decrypted vault cv/") for b in bad), bad)
+        subprocess.run(["git", "-C", self.a, "rm", "-q", "--cached", "-f", "cv"], check=True)
+        with open(os.path.join(self.a, "cv.age"), "wb") as f:
+            f.write(b"not encrypted at all\n")
+        subprocess.run(["git", "-C", self.a, "add", "cv.age"], check=True)
+        self.assertTrue(any(b.startswith("cv.age: not age-encrypted") for b in guard.check(self.a, "pre-commit")))
 
     def test_needs_key_and_recipients(self):
         os.environ["OPENSELF_IDENTITY"] = os.path.join(self.tmp, "missing")
