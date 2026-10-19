@@ -136,7 +136,8 @@ def main(argv=None):
                 if r.get("unchanged"):
                     print("nothing changed since the last push")
                 else:
-                    print(f"profile.age: {r['size']} bytes" + (f", commit {r['commit']}" if r["commit"] else "") + (", pushed" if r["uploaded"] else ""))
+                    print(f"profile.age: {r['size']} bytes" + (f", commit {r['commit']}" if r["commit"] else "") + (", pushed" if r["uploaded"] else "")
+                      + (f" as {r['pr']} (merges by itself once the guard passes)" if r.get("pr") else ""))
             else:
                 r = sync.pull(home)
                 print(f"{r['result']} ({r['head']})")

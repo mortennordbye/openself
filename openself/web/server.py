@@ -37,7 +37,8 @@ def sync_action(home, name):
             r = sync.push(home)
             if r.get("unchanged"):
                 return 200, dict(r, message="Nothing changed since the last push")
-            return 200, dict(r, message=f"Encrypted ({r['size'] // 1024} KiB)" + (" and pushed" if r["uploaded"] else ""))
+            return 200, dict(r, message=f"Encrypted ({r['size'] // 1024} KiB)" + (" and pushed" if r["uploaded"] else "")
+                          + (" as a pull request that merges once the guard passes" if r.get("pr") else ""))
         r = sync.pull(home)
         return 200, dict(r, message=r["result"])
     except sync.SyncError as e:

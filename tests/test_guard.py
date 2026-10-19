@@ -237,6 +237,31 @@ class Guard(unittest.TestCase):
         git(self.home, "commit", "-q", "--no-verify", "-m", "undo")
         self.assertTrue(any("decrypted profile must never be committed" in b for b in guard.check_history(self.home)))
 
+    def test_push_through_a_pull_request(self):
+        bindir = os.path.join(self.tmp, "bin")
+        os.makedirs(bindir)
+        log = os.path.join(self.tmp, "gh.log")
+        with open(os.path.join(bindir, "gh"), "w") as f:  # stands in for the GitHub CLI
+            f.write(f"""#!/bin/sh
+echo "$*" >> {log}
+case "$1 $2" in "pr create") echo https://github.com/o/r/pull/1;; esac
+""")
+        os.chmod(os.path.join(bindir, "gh"), 0o755)
+        os.environ["PATH"] = bindir + os.pathsep + os.environ["PATH"]
+        with open(os.path.join(self.home, ".openself", "config"), "w") as f:
+            f.write("# how push uploads\npush = pull-request\n")
+        main_before = git(self.remote, "rev-parse", "HEAD").stdout
+        self.touch_profile()
+        r = sync.push(self.home)
+        self.assertEqual(r["pr"], "https://github.com/o/r/pull/1")
+        self.assertEqual(git(self.remote, "rev-parse", "HEAD").stdout, main_before)  # main is left to GitHub
+        self.assertEqual(git(self.remote, "rev-parse", sync.SNAPSHOT_BRANCH).stdout.strip(),
+                         git(self.home, "rev-parse", "HEAD").stdout.strip())
+        with open(log) as f:
+            calls = f.read().splitlines()
+        self.assertTrue(calls[1].startswith("pr create --base "))
+        self.assertEqual(calls[2], "pr merge https://github.com/o/r/pull/1 --auto --merge")
+
     def touch_profile(self):
         p = sync.profile_dir(self.home)
         with open(os.path.join(p, "person.md"), "a") as f:

@@ -23,7 +23,7 @@ import subprocess
 
 from . import model
 
-ALLOWED = ["profile.age", ".openself/recipients", ".openself/allow", ".gitignore", ".gitmodules", "openself",
+ALLOWED = ["profile.age", ".openself/recipients", ".openself/allow", ".openself/config", ".gitignore", ".gitmodules", "openself",
            "self", "Makefile", "README.md", "AGENTS.md", "CLAUDE.md", "LICENSE", ".github/workflows/guard.yml"]
 AGE_HEADER = b"age-encryption.org/v1\n"
 PLAINTEXT = (b"OPENSELF-BUNDLE-1", b"\nschema: 1\n", b"---\nschema:", b"PACK\x00\x00\x00")
