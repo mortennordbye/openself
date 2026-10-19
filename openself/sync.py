@@ -137,7 +137,8 @@ def keys_init(home=None):
         where = store_identity(secret)
     pub = public_key(secret)
     if home:
-        add_recipient(home, pub, f"{os.environ.get('USER', 'owner')}@{platform.node()}")
+        # The recipients file is public: label the key with a date, not the user or machine name.
+        add_recipient(home, pub, f"key added {model.today()}")
     return pub, where, created
 
 

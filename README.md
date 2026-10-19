@@ -34,7 +34,9 @@ is a commit. It works in English and Norwegian, following the profile's language
 
 ## Your own profile repository, encrypted
 
-A profile is personal. To keep it in a GitHub repository, even a public one, keep it encrypted:
+A profile is personal. To keep it in a GitHub repository, even a public one, keep it encrypted.
+The quickest start is [openself-template](https://github.com/mortennordbye/openself-template)
+(**Use this template**, then follow its README). By hand:
 
 ```
 mkdir my-openself && cd my-openself
