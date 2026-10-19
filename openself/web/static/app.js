@@ -408,17 +408,47 @@ function OpenSelfUI(root, host) {
     };
   }
   // Certificates from the certifications table: name, issuer, the month taken and the month it expires.
-  function certRows() {
-    const c = byId('certifications'); if (!c || c.removed) return [];
-    const mo = s => ym(String(s || '').slice(0, 7));
+  // Rows of the table at the top of certifications.md or education.md, header left out.
+  function tableRows(id) {
+    const c = byId(id); if (!c || c.removed) return [];
     return ((c.sections.find(x => x.id === '_intro') || {}).text || '').split('\n').filter(l => /^\s*\|/.test(l)).slice(1)
-      .map(l => l.trim().replace(/^\||\|$/g, '').split('|').map(x => x.trim())).filter(r => !r.every(x => /^:?-*:?$/.test(x)))
-      .map(r => ({ name: r[0], issuer: r[1] || '', date: r[2] || '', expires: r[3] || '', at: mo(r[2]), to: mo(r[3]) })).filter(r => r.name && r.at != null);
+      .map(l => l.trim().replace(/^\||\|$/g, '').split('|').map(x => x.trim())).filter(r => !r.every(x => /^:?-*:?$/.test(x)));
+  }
+  const tmo = s => ym(String(s || '').slice(0, 7));
+  // A lane's name goes left, or right when something starts at the left edge, or nowhere if both are taken.
+  function laneLabel(lane, ic, text, f, from, to) {
+    const lab = withIcon(ic, text, 'os-cert-lab');
+    if (Math.min(...from.map(f.at)) < 14) { if (Math.max(...to.map(m => f.at(m + 1))) > 84) return; lab.classList.add('right'); }
+    lane.append(lab);
+  }
+  function certRows() {
+    return tableRows('certifications').map(r => ({ name: r[0], issuer: r[1] || '', date: r[2] || '', expires: r[3] || '', at: tmo(r[2]), to: tmo(r[3]) }))
+      .filter(r => r.name && r.at != null);
+  }
+  // Education: degree, school, from, to. A year alone counts from January to December.
+  function eduRows() {
+    return tableRows('education').map(r => ({ name: r[0], school: r[1] || '', from: r[2] || '', to: r[3] || '', at: tmo(r[2]),
+      end: /^\d{4}$/.test(r[3] || '') ? tmo(r[3]) + 11 : tmo(r[3]) })).filter(r => r.name && r.at != null);
+  }
+  // One lane of bars, one per education row; an unknown end fades out with a question mark.
+  function eduLane(f, rows, card, cls) {
+    const lane = el('div', cls), lanes = [];
+    laneLabel(lane, 'book', typeLabel('education'), f, rows.map(r => r.at), rows.map(r => r.end ?? r.at + 5));
+    for (const r of [...rows].sort((a, b) => a.at - b.at)) {
+      const open = r.end == null, b = open ? r.at + 5 : r.end;
+      let i = lanes.findIndex(e => e < r.at); if (i < 0) { i = lanes.length; lanes.push(0); } lanes[i] = b;
+      const d = el('button', 'os-edu' + (open ? ' open' : '')); d.style.left = f.at(r.at) + '%'; d.style.width = f.w(r.at, b) + '%'; d.style.top = (3 + i * 16) + 'px';
+      if (f.w(r.at, b) > r.name.length * 0.9 + 4) d.append(el('span', '', r.name));
+      card(d, null, [r.name, r.school, r.from + ' – ' + (r.to || '?')]);
+      d.onclick = () => (PF.view === 'overview' ? reveal('education', false) : select('education')); lane.append(d);
+    }
+    lane.style.height = (lanes.length * 16 + 8) + 'px';
+    return lane;
   }
   // One lane of diamonds, one per certificate; an expired one is hollow.
   function certLane(f, certs, card, cls) {
     const lane = el('div', cls), rows = [], step = f.w(0, 0) * 3;
-    lane.append(withIcon('award', t('certsN').replace(/^./, x => x.toUpperCase()), 'os-cert-lab'));
+    laneLabel(lane, 'award', t('certsN').replace(/^./, x => x.toUpperCase()), f, certs.map(c => c.at), certs.map(c => c.at + 1));
     for (const c of [...certs].sort((a, b) => a.at - b.at)) {
       const x = f.at(c.at); let r = rows.findIndex(end => end < x - step); if (r < 0) { r = rows.length; rows.push(0); } rows[r] = x;
       const d = el('button', 'os-cert' + (c.to != null && c.to < nowYm() ? ' expired' : '')); d.style.left = x + '%'; d.style.top = (3 + r * 12) + 'px';
@@ -432,10 +462,12 @@ function OpenSelfUI(root, host) {
     const box = el('div', 'os-mtl' + (PF.grown ? '' : ' grow')), dated = jobs.filter(j => ym(val(j, 'start')) != null);
     if (!dated.length) return el('div');
     PF.grown = true;
-    const certs = certRows(), f = timeFrame(dated.flatMap(j => [j, ...kidsOf(j)]).filter(e => ym(val(e, 'start')) != null), certs.map(c => c.at)), card = hoverCard(box);
+    const certs = certRows(), edu = eduRows();
+    const f = timeFrame(dated.flatMap(j => [j, ...kidsOf(j)]).filter(e => ym(val(e, 'start')) != null), [...certs.map(c => c.at), ...edu.flatMap(r => [r.at, r.end ?? r.at])]), card = hoverCard(box);
     const legend = el('div', 'os-mtl-legend');
     for (const [cls, label] of [['job', t('employment')], ['k-client', enumLabel('kind', 'client')], ['k-internal', enumLabel('kind', 'internal')], ['k-portfolio', enumLabel('kind', 'portfolio')]]) {
       const s = el('span'); s.append(el('i', cls), label); legend.append(s); }
+    if (edu.length) { const s = el('span'); s.append(el('i', 'os-edu-key'), typeLabel('education').toLowerCase()); legend.append(s); }
     if (certs.length) { const s = el('span'); s.append(el('i', 'os-cert-key'), t('certsN')); legend.append(s); }
     const axis = el('div', 'os-mtl-axis'); for (let y = f.y0; y <= f.y1; y++) { const s = el('span', '', String(y)); s.style.left = f.at(y * 12) + '%'; s.style.width = f.w(0, 11) + '%'; axis.append(s); }
     const lanes = el('div', 'os-mtl-lanes'); lanes.append(backdrop(f));
@@ -456,6 +488,7 @@ function OpenSelfUI(root, host) {
       }
       lane.style.height = (rows.length ? 28 + rows.length * 8 : 26) + 'px'; lanes.append(lane);
     }
+    if (edu.length) lanes.append(eduLane(f, edu, card, 'os-mtl-lane os-cert-lane'));
     if (certs.length) lanes.append(certLane(f, certs, card, 'os-mtl-lane os-cert-lane'));
     box.append(legend, axis, lanes); return box;
   }
@@ -884,7 +917,7 @@ function OpenSelfUI(root, host) {
   function timeline(box) {
     const all = entries().filter(e => !e.removed && (e.type === 'employment' || e.type === 'assignment') && ym(val(e, 'start')) != null);
     if (!all.length) { box.append(el('div', 'os-empty', t('noDates'))); return; }
-    const certs = certRows(), f = timeFrame(all, certs.map(c => c.at)), pct = mo => f.at(mo) + '%', wid = (a, b) => f.w(a, b) + '%';
+    const certs = certRows(), edu = eduRows(), f = timeFrame(all, [...certs.map(c => c.at), ...edu.flatMap(r => [r.at, r.end ?? r.at])]), pct = mo => f.at(mo) + '%', wid = (a, b) => f.w(a, b) + '%';
     const tl = el('div', 'os-tl'), axis = el('div', 'os-tl-axis'), rows = el('div', 'os-tl-rows'), card = hoverCard(tl);
     for (let y = f.y0; y <= f.y1; y++) { const s = el('span', '', String(y)); s.style.left = pct(y * 12); s.style.width = wid(0, 11); axis.append(s); }
     tl.append(axis); rows.append(backdrop(f));
@@ -910,6 +943,7 @@ function OpenSelfUI(root, host) {
       }
       row.style.height = (30 + lanes.length * 22) + 'px'; rows.append(row);
     }
+    if (edu.length) rows.append(eduLane(f, edu, card, 'os-tl-row os-cert-lane'));
     if (certs.length) rows.append(certLane(f, certs, card, 'os-tl-row os-cert-lane'));
     tl.append(rows); box.append(tl, el('div', 'os-lead', t('tlLead')));
   }
