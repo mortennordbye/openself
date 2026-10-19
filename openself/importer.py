@@ -196,7 +196,8 @@ def remember(text, urls):
 
 def run(root, urls=None, get=None):
     """Fetch every page (the given links, else the ones stored in `imports`) and merge them into
-    certifications.md. Returns (rel, old text, new text, one summary per page); writes nothing."""
+    certifications.md. Returns (rel, old text, new text, one summary per page); writes nothing.
+    A page that cannot be read gets a summary with `error` and changes nothing."""
     rel = model.find(root, "certifications")
     if not rel or rel.startswith("_removed/"):
         raise FileNotFoundError("certifications")
@@ -213,7 +214,13 @@ def run(root, urls=None, get=None):
     lang = model.load_profile(root).lang
     text, results = old, []
     for u in urls:
-        certs, source = fetch(u, get or get_json)
+        try:
+            certs, source = fetch(u, get or get_json)
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+            # One page that cannot be read does not stop the others.
+            results.append({"url": u, "source": source_of(u)[0], "error": str(getattr(e, "reason", e)) or type(e).__name__,
+                            "found": 0, "added": [], "updated": [], "conflicts": [], "unchanged": 0})
+            continue
         text, summary = merge(model.load_entry(rel, text), certs, source, lang)
         results.append(dict(summary, url=u))
     return rel, old, remember(text, urls), results

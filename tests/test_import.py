@@ -149,6 +149,16 @@ class Import(unittest.TestCase):
         self.assertEqual(st, 502)
         self.assertIn("no network", j["message"])
 
+    def test_one_page_down_does_not_stop_the_other(self):
+        def half(url):
+            if "credly" in url:
+                raise OSError("credly is down")
+            return fake_get(url)
+        with mock.patch.object(importer, "get_json", half):
+            st, j = api.import_(self.root, {"urls": [CREDLY_URL, MSLEARN_URL], "dry_run": True})
+        self.assertEqual((st, j["changed"]), (200, True))
+        self.assertEqual([(r["source"], r.get("error", "")) for r in j["results"]], [("credly", "credly is down"), ("mslearn", "")])
+
 
 if __name__ == "__main__":
     unittest.main()

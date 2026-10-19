@@ -20,7 +20,7 @@
 function OpenSelfUI(root, host) {
   'use strict';
   const PF = { data: null, sel: '', view: 'overview', dirty: false, edit: null, filters: { tech: [], removed: false },
-               query: '', asof: null, hist: null, conflict: null, loading: false, open: new Set(), news: null, checked: false };
+               query: '', asof: null, hist: null, conflict: null, loading: false, open: new Set(), news: null, checked: false, check: null };
   const store = (() => { try { return window.localStorage; } catch (e) { return null; } })();
   const KEY = 'openself.sel.' + (host.key || 'profile');
 
@@ -112,6 +112,9 @@ function OpenSelfUI(root, host) {
       noOpenQ: 'No open questions.', showingOnly: 'Showing only', techTip: 'Show only where it was used', certsEdu: 'Certifications and education',
       showRemovedN: 'Show removed ({n})', hideRemoved: 'Hide removed', nowWord: 'now',
       newsFrom: 'New from {src}: {parts}.', newsAdded: '{n} new', newsUpdated: '{n} filled in', newsConflicts: '{n} disagree', newsSee: 'See and import', notNow: 'Not now',
+      accounts: 'Linked accounts', linked: 'linked', notLinked: 'not linked', linkIt: 'Link', checkNow: 'Check now', checking: 'Checking …',
+      checkedAt: 'Checked {t}', neverChecked: 'Not checked yet', lastImported: 'Last imported {d}', neverImported: 'Never imported',
+      nothingNew: 'nothing new', newThings: '{n} new or changed', readFail: 'could not read: {e}', openPage: 'Open the page',
       importBtn: 'Import', importTitle: 'Import certifications', importLead: 'Paste the link to your Credly profile or your Microsoft Learn transcript, one per line. Nothing is saved until you have seen what changes.',
       importWhere: 'Credly: your profile page (credly.com/users/…). Microsoft Learn: Profile → Transcript → Share link.', preview: 'Preview',
       found: '{n} found', nothingToChange: 'Nothing to change: the table already has all of it.', imported: 'Imported and versioned', importNow: 'Import',
@@ -153,6 +156,9 @@ function OpenSelfUI(root, host) {
       noOpenQ: 'Ingen åpne spørsmål.', showingOnly: 'Viser bare', techTip: 'Vis bare der den ble brukt', certsEdu: 'Sertifiseringer og utdanning',
       showRemovedN: 'Vis fjernet ({n})', hideRemoved: 'Skjul fjernet', nowWord: 'nå',
       newsFrom: 'Nytt fra {src}: {parts}.', newsAdded: '{n} nye', newsUpdated: '{n} fylt ut', newsConflicts: '{n} uenige', newsSee: 'Se og importer', notNow: 'Ikke nå',
+      accounts: 'Koblede kontoer', linked: 'koblet', notLinked: 'ikke koblet', linkIt: 'Koble til', checkNow: 'Sjekk nå', checking: 'Sjekker …',
+      checkedAt: 'Sjekket {t}', neverChecked: 'Ikke sjekket ennå', lastImported: 'Sist importert {d}', neverImported: 'Aldri importert',
+      nothingNew: 'ingenting nytt', newThings: '{n} nye eller endret', readFail: 'kunne ikke leses: {e}', openPage: 'Åpne siden',
       importBtn: 'Importer', importTitle: 'Importer sertifiseringer', importLead: 'Lim inn lenken til Credly-profilen din eller Microsoft Learn-transkripsjonen, én per linje. Ingenting lagres før du har sett hva som endres.',
       importWhere: 'Credly: profilsiden din (credly.com/users/…). Microsoft Learn: Profil → Transkripsjon → Del lenke.', preview: 'Forhåndsvis',
       found: '{n} funnet', nothingToChange: 'Ingenting å endre: tabellen har alt fra før.', imported: 'Importert og versjonert', importNow: 'Importer',
@@ -522,6 +528,7 @@ function OpenSelfUI(root, host) {
     }
     if (!qs.length) qb.append(el('div', 'os-mut', t('noOpenQ')));
     side.append(qb);
+    accountsBox(side);
   }
   // Scroll the overview to an entry and open it; what is not on the stream opens on its own page.
   function reveal(id, quiet) {
@@ -795,11 +802,48 @@ function OpenSelfUI(root, host) {
   }
   // Certifications from Credly or Microsoft Learn: a preview first, then the import as one commit.
   // At start-up: are there certificates on the stored pages that the table does not have yet?
-  async function checkImports() {
+  async function checkImports(manual) {
     const c = byId('certifications');
     if (!c || !list(c, 'imports').length || PF.data.readonly || PF.asof) return;
-    let j; try { j = await host.post('import', { dry_run: true }); } catch (err) { return; }
-    if (j && j.ok && j.changed) { PF.news = j; if (PF.view === 'overview' && !PF.dirty) render(); }
+    PF.check = Object.assign(PF.check || {}, { busy: true }); if (manual) render();
+    let j; try { j = await host.post('import', { dry_run: true }); } catch (err) { j = { ok: false, message: String(err) }; }
+    if (!j || j.status === 404) { PF.check = null; return; }  // a host without the import endpoint
+    PF.check = { at: new Date(), results: j.results || [], error: j.ok ? '' : j.message || t('couldNot') };
+    PF.news = j.ok && j.changed ? j : null;
+    if (PF.view === 'overview' && !PF.dirty) render();
+  }
+  const SOURCES = [['credly', 'Credly', /^https:\/\/(www\.)?credly\.com\//], ['mslearn', 'Microsoft Learn', /^https:\/\/learn\.microsoft\.com\//]];
+  // Which accounts are linked, when they were last checked and imported, and buttons to check or import now.
+  function accountsBox(side) {
+    const c = byId('certifications'); if (!c || c.removed) return;
+    const links = list(c, 'imports'), ro = PF.data.readonly || PF.asof, box = el('div', 'os-box os-accts'), h = el('h3');
+    h.append(icon('globe'), t('accounts')); box.append(h);
+    for (const [key, name, re] of SOURCES) {
+      const url = links.find(u => re.test(u)), row = el('div', 'os-acct'), top = el('div', 'os-acct-top');
+      const dot = el('span', 'os-acct-dot' + (url ? ' on' : '')); top.append(dot, el('b', '', name));
+      if (url) { const a = el('a', '', t('linked')); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.title = t('openPage'); top.append(a); }
+      else top.append(el('span', 'os-mut', t('notLinked')));
+      row.append(top);
+      if (url) {
+        const r = PF.check && PF.check.results && PF.check.results.find(x => x.url === url), st = el('div', 'os-acct-st');
+        const when = PF.check && PF.check.at ? PF.check.at.toLocaleTimeString(PF.data.lang === 'nb' ? 'nb-NO' : undefined, { hour: '2-digit', minute: '2-digit' }) : '';
+        if (PF.check && PF.check.busy) st.append(t('checking'));
+        else if (r && r.error) { st.classList.add('bad'); dot.classList.add('bad'); st.append(t('checkedAt', { t: when }) + ' · ' + t('readFail', { e: r.error })); }
+        else if (r) { const n = r.added.length + r.updated.length + r.conflicts.length; st.append(t('checkedAt', { t: when }) + ' · '); st.append(el('span', n ? 'os-acct-new' : '', n ? t('newThings', { n }) : t('nothingNew'))); }
+        else if (PF.check && PF.check.error) { st.classList.add('bad'); st.append(t('readFail', { e: PF.check.error })); }
+        else st.append(t('neverChecked'));
+        const stamp = list(c, 'sources').filter(x => x.startsWith(name + ' ')).pop();
+        row.append(st, el('div', 'os-acct-st', stamp ? t('lastImported', { d: stamp.slice(name.length + 1) }) : t('neverImported')));
+      }
+      box.append(row);
+    }
+    if (!ro) {
+      const acts = el('div', 'os-acts');
+      if (links.length) { const ck = el('button', 'os-btn'); ck.append(icon('clock'), t('checkNow')); ck.disabled = !!(PF.check && PF.check.busy); ck.onclick = () => checkImports(true); acts.append(ck); }
+      const im = el('button', 'os-btn'); im.append(icon('download'), links.length ? t('importBtn') + ' …' : t('linkIt'));
+      im.onclick = () => importDialog(c, PF.news); acts.append(im); box.append(acts);
+    }
+    side.append(box);
   }
   function newsBanner(j) {
     const b = el('div', 'os-news'), n = k => j.results.reduce((a, r) => a + r[k].length, 0);
@@ -823,7 +867,7 @@ function OpenSelfUI(root, host) {
     const show = j => {
       out.replaceChildren();
       for (const r of j.results) {
-        const box = el('div', 'os-imp-src'); box.append(el('b', '', r.url.includes('credly') ? 'Credly' : 'Microsoft Learn'), el('span', 'os-mut', ' · ' + t('found', { n: r.found })));
+        const box = el('div', 'os-imp-src'); box.append(el('b', '', r.url.includes('credly') ? 'Credly' : 'Microsoft Learn'), el('span', 'os-mut', ' · ' + (r.error ? t('readFail', { e: r.error }) : t('found', { n: r.found }))));
         const part = (label, items, cls, fmt) => { if (!items.length) return; box.append(el('div', 'os-imp-h ' + cls, label)); const ul = el('ul'); for (const x of items) ul.append(el('li', '', fmt(x))); box.append(ul); };
         part(t('importAdd'), r.added, 'add', x => x.name + ' · ' + [x.issuer, x.date, x.expires && '→ ' + x.expires].filter(Boolean).join(' · '));
         part(t('importUpdate'), r.updated, 'upd', x => x.name + ': ' + Object.entries(x.changes).map(([k, v]) => (v[0] || t('emptyCell')) + ' → ' + v[1]).join(', '));
@@ -838,7 +882,7 @@ function OpenSelfUI(root, host) {
       const j = await (dry ? host.post('import', { urls: urls(), dry_run: true }) : post('import', { urls: urls() }));
       status(''); pre.disabled = false;
       if (!j.ok) { msg.textContent = j.message || t('couldNot'); return; }
-      if (!dry) { d.close(); PF.news = null; toast(j.changed ? t('imported') : t('nothingToChange')); await load(); return; }
+      if (!dry) { d.close(); PF.news = null; toast(j.changed ? t('imported') : t('nothingToChange')); await load(); checkImports(); return; }
       show(j);
     };
     pre.onclick = () => run(true); go.onclick = () => run(false); cancel.onclick = () => d.close();
