@@ -327,6 +327,21 @@ class IndexAndLint(Tmp):
         issues = self.lint_with("assignments/2021-04-vestkraft-skymigrering.md", {"id": "something-else"})
         self.assertTrue(self.has(issues, "error", "id", "must equal"))
 
+    def test_retired_sources_still_read_and_fmt_drops_them(self):
+        old = ("---\nschema: 1\nid: education\ntype: education\nsources: [linkedin]\n---\n\n"
+               "| Grad / fagbrev | Skole | Fra | Til | Kilde |\n|---|---|---|---|---|\n"
+               "| Bachelor | Høgskulen | 2014 | 2017 | linkedin |\n\n## Annet\n\n| a | b |\n|---|---|\n| 1 | 2 |\n")
+        issues = self.lint_with("education.md", text=old)
+        self.assertEqual([i for i in issues if i[0] == "error"], [])
+        self.assertTrue(self.has(issues, "warning", "sources", "openself fmt"))
+        self.assertTrue(self.has(issues, "warning", "", "source column"))
+        e = model.load_entry("education.md", old)
+        new = write.render(e.meta, e.body, "education")
+        self.assertNotIn("sources", new)
+        self.assertIn("| Grad / fagbrev | Skole | Fra | Til |\n|---|---|---|---|\n| Bachelor | Høgskulen | 2014 | 2017 |\n", new)
+        self.assertIn("| a | b |\n|---|---|\n| 1 | 2 |", new)  # other tables are left alone
+        self.assertEqual(model.retired(*model.drop_retired(e.meta, e.body, "education"), "education"), [])
+
     def test_gaps_and_stale_index(self):
         self.copy_example(git=False)
         os.unlink(os.path.join(self.root, "employments/2021-03-fjordsky-seniorkonsulent.md"))

@@ -80,7 +80,7 @@ def new_id(taken, start, *parts):
 
 def render(meta, body, type_):
     """The file text for an entry: canonical frontmatter, then the body."""
-    meta = dict(meta)
+    meta, body = model.drop_retired(dict(meta), body, type_)
     for k in list(meta):
         if schema.is_list(type_, k) and meta[k] == "":
             meta[k] = []

@@ -82,7 +82,7 @@ function OpenSelfUI(root, host) {
       roStatus: 'Read-only', noMatch: 'Nothing matches the filter.', withoutEmployment: 'Without employment', removed: 'Removed', choose: 'Choose an entry.',
       period: 'Period', employer: 'Employment', customer: 'Customer', nameable: 'May be named', sector: 'Sector', allocation: 'Allocation', team: 'Team', kind: 'Kind',
       location: 'Location', empType: 'Employment type', breaks: 'Breaks', title: 'Title', languages: 'Languages', clearance: 'Clearance', confidence: 'Confidence',
-      reviewed: 'Last reviewed', sources: 'Sources', edit: 'Edit', ask: 'Ask about this', remove: 'Remove', unreadable: 'The file cannot be read: {e}\nEdit it as a raw file to fix it.',
+      reviewed: 'Last reviewed', edit: 'Edit', ask: 'Ask about this', remove: 'Remove', unreadable: 'The file cannot be read: {e}\nEdit it as a raw file to fix it.',
       editRaw: 'Edit raw file', inEmployment: 'Assignments in this employment', noText: 'No text yet. Press Edit.', answer: 'Answer', answerHint: 'Your answer, in your own words. It is stored in quotes after the question.',
       saveAnswer: 'Save answer', cancel: 'Cancel', askMe: 'Ask me about this', answerSaved: 'Answer saved', reloaded: 'The entry changed. Reloading.', couldNot: 'Could not save',
       editing: 'Editing', save: 'Save', form: 'Form', raw: 'Raw file', verified: 'I have checked that everything in this entry is right', verifiedTip: 'Sets confidence to verified',
@@ -113,7 +113,7 @@ function OpenSelfUI(root, host) {
       showRemovedN: 'Show removed ({n})', hideRemoved: 'Hide removed', nowWord: 'now',
       newsFrom: 'New from {src}: {parts}.', newsAdded: '{n} new', newsUpdated: '{n} filled in', newsConflicts: '{n} disagree', newsSee: 'See and import', notNow: 'Not now',
       accounts: 'Linked accounts', linked: 'linked', notLinked: 'not linked', linkIt: 'Link', checkNow: 'Check now', checking: 'Checking …',
-      checkedAt: 'Checked {t}', neverChecked: 'Not checked yet', lastImported: 'Last imported {d}', neverImported: 'Never imported',
+      checkedAt: 'Checked {t}', neverChecked: 'Not checked yet',
       nothingNew: 'nothing new', newThings: '{n} new or changed', readFail: 'could not read: {e}', openPage: 'Open the page',
       importBtn: 'Import', importTitle: 'Import certifications', importLead: 'Paste the link to your Credly profile or your Microsoft Learn transcript, one per line. Nothing is saved until you have seen what changes.',
       importWhere: 'Credly: your profile page (credly.com/users/…). Microsoft Learn: Profile → Transcript → Share link.', preview: 'Preview',
@@ -126,7 +126,7 @@ function OpenSelfUI(root, host) {
       roStatus: 'Skrivebeskyttet', noMatch: 'Ingen oppføringer passer filteret.', withoutEmployment: 'Uten ansettelse', removed: 'Fjernet', choose: 'Velg en oppføring.',
       period: 'Periode', employer: 'Ansettelse', customer: 'Kunde', nameable: 'Kan navngis', sector: 'Bransje', allocation: 'Stilling', team: 'Team', kind: 'Type',
       location: 'Sted', empType: 'Ansettelsesform', breaks: 'Pauser', title: 'Tittel', languages: 'Språk', clearance: 'Klarering', confidence: 'Sikkerhet',
-      reviewed: 'Sist sjekket', sources: 'Kilder', edit: 'Rediger', ask: 'Be om intervju', remove: 'Fjern', unreadable: 'Filen kan ikke leses: {e}\nRediger den som rå fil for å rette feilen.',
+      reviewed: 'Sist sjekket', edit: 'Rediger', ask: 'Be om intervju', remove: 'Fjern', unreadable: 'Filen kan ikke leses: {e}\nRediger den som rå fil for å rette feilen.',
       editRaw: 'Rediger rå fil', inEmployment: 'Oppdrag i denne ansettelsen', noText: 'Ingen tekst ennå. Trykk Rediger.', answer: 'Svar', answerHint: 'Svaret ditt, med dine ord. Det lagres i anførselstegn etter spørsmålet.',
       saveAnswer: 'Lagre svar', cancel: 'Avbryt', askMe: 'Spør meg om dette', answerSaved: 'Svar lagret', reloaded: 'Oppføringen ble endret. Laster på nytt.', couldNot: 'Kunne ikke lagre',
       editing: 'Redigerer', save: 'Lagre', form: 'Skjema', raw: 'Rå fil', verified: 'Jeg har sjekket at alt i denne oppføringen stemmer', verifiedTip: 'Setter sikkerhet til bekreftet',
@@ -157,7 +157,7 @@ function OpenSelfUI(root, host) {
       showRemovedN: 'Vis fjernet ({n})', hideRemoved: 'Skjul fjernet', nowWord: 'nå',
       newsFrom: 'Nytt fra {src}: {parts}.', newsAdded: '{n} nye', newsUpdated: '{n} fylt ut', newsConflicts: '{n} uenige', newsSee: 'Se og importer', notNow: 'Ikke nå',
       accounts: 'Koblede kontoer', linked: 'koblet', notLinked: 'ikke koblet', linkIt: 'Koble til', checkNow: 'Sjekk nå', checking: 'Sjekker …',
-      checkedAt: 'Sjekket {t}', neverChecked: 'Ikke sjekket ennå', lastImported: 'Sist importert {d}', neverImported: 'Aldri importert',
+      checkedAt: 'Sjekket {t}', neverChecked: 'Ikke sjekket ennå',
       nothingNew: 'ingenting nytt', newThings: '{n} nye eller endret', readFail: 'kunne ikke leses: {e}', openPage: 'Åpne siden',
       importBtn: 'Importer', importTitle: 'Importer sertifiseringer', importLead: 'Lim inn lenken til Credly-profilen din eller Microsoft Learn-transkripsjonen, én per linje. Ingenting lagres før du har sett hva som endres.',
       importWhere: 'Credly: profilsiden din (credly.com/users/…). Microsoft Learn: Profil → Transkripsjon → Del lenke.', preview: 'Forhåndsvis',
@@ -556,7 +556,7 @@ function OpenSelfUI(root, host) {
   // Icons for the facts on an entry's page, by their label.
   const FACT_ICON = new Proxy({}, { get: (_, k) => ({ period: 'calendar', employer: 'building', customer: 'briefcase', nameable: 'user', sector: 'layers', allocation: 'chart',
     team: 'user', kind: 'tag', location: 'pin', empType: 'briefcase', breaks: 'clock', title: 'briefcase', languages: 'globe', clearance: 'info', confidence: 'info',
-    reviewed: 'calendar', sources: 'book', LinkedIn: 'globe', GitHub: 'git' })[Object.keys(UI.en).find(x => t(x) === k) || k] });
+    reviewed: 'calendar', LinkedIn: 'globe', GitHub: 'git' })[Object.keys(UI.en).find(x => t(x) === k) || k] });
   function drawDetail() {
     const box = root.querySelector('.os-detail'); if (!box) return;
     const e = byId(PF.sel); box.replaceChildren();
@@ -583,7 +583,7 @@ function OpenSelfUI(root, host) {
       fact(t('clearance'), val(e, 'clearance') + (val(e, 'clearance_valid_until') ? t('untilWord') + val(e, 'clearance_valid_until') : ''));
       fact('LinkedIn', val(e, 'linkedin')); fact('GitHub', val(e, 'github'));
     }
-    fact(t('confidence'), enumLabel('confidence', val(e, 'confidence'))); fact(t('reviewed'), val(e, 'last_reviewed')); fact(t('sources'), list(e, 'sources').join(', '));
+    fact(t('confidence'), enumLabel('confidence', val(e, 'confidence'))); fact(t('reviewed'), val(e, 'last_reviewed'));
     head.append(facts);
     const tech = list(e, 'tech');
     if (tech.length) { const tl = el('div', 'os-tags'); for (const x of tech) { const b = el('button', 'os-chip', x); b.title = t('visitAll', { t: x }); b.onclick = () => { PF.filters.tech = [x]; PF.view = 'overview'; render(); }; tl.append(b); } head.append(tl); }
@@ -617,32 +617,9 @@ function OpenSelfUI(root, host) {
       const sec = el('div', 'os-sec'); sec.dataset.entry = e.id; sec.dataset.section = s.id; sec.dataset.file = e.file;
       if (s.id !== '_intro') sec.append(el('h3', '', s.known ? sectionLabel(e.type, s.id) : s.heading));
       sec.append(s.id === 'flags' ? flagsView(e, s.text) : renderMd(s.text));
-      if (s.id === '_intro' && sch.table) { sourceChips(sec, e, sch.table.indexOf('source')); issuerBadges(sec, sch.table.indexOf('issuer')); }
+      if (s.id === '_intro' && sch.table) issuerBadges(sec, sch.table.indexOf('issuer'));
       return sec;
     });
-  }
-  // The source cell of a table row as chips: 'raw.md 2026-10, Credly 2026-10-19' becomes two, each with
-  // its date muted; Credly and Microsoft Learn link to the linked page.
-  function sourceChips(sec, e, col) {
-    if (col < 0) return;
-    const links = list(byId('certifications') || { meta: {} }, 'imports');
-    for (const td of sec.querySelectorAll('tbody tr td:nth-child(' + (col + 1) + ')')) {
-      const parts = td.textContent.split(/,\s*(?![^()]*\))/).map(x => x.trim()).filter(Boolean); if (!parts.length) continue;
-      const box = el('span', 'os-srcs');
-      for (const p of parts) {
-        const m = /^(.*?)\s+(\d{4}(?:-\d{2}){0,2})$/.exec(p), name = m ? m[1] : p, date = m ? m[2] : '';
-        const kind = /credly/i.test(name) ? 'credly' : /microsoft learn/i.test(name) ? 'mslearn' : /egne notater|own notes|self-edit/i.test(name) ? 'own'
-          : /\.(md|pdf|docx?)\b|^intake:/i.test(name) ? 'doc'
-          : /chat|intervju|interview|samtale/i.test(name) ? 'talk' : 'other';
-        const url = kind === 'credly' ? links.find(u => /credly\.com/.test(u)) : kind === 'mslearn' ? links.find(u => /learn\.microsoft\.com/.test(u)) : '';
-        const chip = el(url ? 'a' : 'span', 'os-src k-' + kind); if (url) { chip.href = url; chip.target = '_blank'; chip.rel = 'noopener noreferrer'; }
-        chip.append(kind === 'credly' || kind === 'mslearn' ? logoMark(kind === 'credly' ? 'Credly' : 'Microsoft Learn')
-          : icon({ own: 'user', doc: 'note', talk: 'chat', other: 'tag' }[kind]), el('span', '', name));
-        if (date) chip.append(el('small', '', date));
-        chip.title = p; box.append(chip);
-      }
-      td.replaceChildren(box);
-    }
   }
   // Issuer logos. Bundled marks are from Simple Icons (https://simpleicons.org, CC0), drawn white on
   // the brand colour. Brands whose marks are not freely licensed (Microsoft, AWS, Oracle, Forsvaret)
@@ -670,7 +647,7 @@ function OpenSelfUI(root, host) {
     const t = el('span', 'os-iss', (words.length > 1 ? words.slice(0, 2).map(w => w[0]).join('') : (words[0] || '?').slice(0, 2)).toUpperCase());
     t.style.background = `hsl(${h} 45% 45%)`; return t;
   }
-  // The mark for an issuer or source: a bundled logo, the site's own icon, or initials.
+  // The mark for an issuer: a bundled logo, the site's own icon, or initials.
   function logoMark(name) {
     const hit = ISSUERS.find(([re]) => re.test(name)), v = hit && hit[1];
     if (v && LOGOS[v]) {
@@ -902,8 +879,7 @@ function OpenSelfUI(root, host) {
         else if (r) { const n = r.added.length + r.updated.length + r.conflicts.length; st.append(t('checkedAt', { t: when }) + ' · '); st.append(el('span', n ? 'os-acct-new' : '', n ? t('newThings', { n }) : t('nothingNew'))); }
         else if (PF.check && PF.check.error) { st.classList.add('bad'); st.append(t('readFail', { e: PF.check.error })); }
         else st.append(t('neverChecked'));
-        const stamp = list(c, 'sources').filter(x => x.startsWith(name + ' ')).pop();
-        row.append(st, el('div', 'os-acct-st', stamp ? t('lastImported', { d: stamp.slice(name.length + 1) }) : t('neverImported')));
+        row.append(st);
       }
       box.append(row);
     }

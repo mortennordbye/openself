@@ -46,7 +46,7 @@ labels in `INDEX.md`. `readonly: true` marks a copy that must not be edited (for
 decrypted checkout of a published profile).
 
 Files starting with `.` are ignored. Nothing else belongs in the folder: source documents (old
-CVs, exports) stay with the tool that collected them, and entries refer to them by label.
+CVs, exports) stay with the tool that collected them.
 
 ## 2. Entries
 
@@ -111,7 +111,6 @@ empty ones included, so a reader sees what is missing.
 | `breaks` | both | leave inside the period, `YYYY-MM/YYYY-MM`, both months included |
 | `allocation`, `team_size` | assignment | percent of full time; people on the team, owner included |
 | `tech`, `methods` | both | canonical names from `tech-names.txt` |
-| `sources` | all | labels for where the facts come from (below) |
 | `imports` | certifications | public pages the table is imported from (a Credly profile, a Microsoft Learn transcript link), so the import can run again |
 | `confidence` | all | `verified`, `stated`, `old-cv`, `linkedin`, `needs-confirmation` |
 | `status`, `last_reviewed` | all | `active` or `removed`; date of the last check or change |
@@ -119,15 +118,18 @@ empty ones included, so a reader sees what is missing.
 | `*_en` | some | a vetted English version of a text field when the profile is not in English |
 | `x-<tool>-<name>` | all | a tool's own field. Kept as is and not validated |
 
-**Sources** are labels, never paths, so the profile stays self-contained: `interview 2026-05-13`,
-`intake:old-cv.pdf`, `linkedin`, `self-edit 2026-10-20`. A single fact from a different source
-than the rest of the entry can say so inline: `[kilde: linkedin]`.
+**The profile is the source.** Everything in it is the owner's own record, so an entry does not
+say where each fact was first written down. What a reader needs is the other direction: a tool that
+writes about the owner (a CV, an answer, a form) must be able to point every claim back to the
+profile. It cites the entry id, and the section when it helps (`2023-08-example-customer`,
+`2023-08-example-customer#contribution`). Who changed an entry, and when, is in the history: every
+change is a commit with the actor in the subject (section 4).
 
 **Imports.** `openself import` reads the certificates on a public Credly profile or Microsoft
 Learn transcript and merges them into `certifications.md`: a certificate that matches a row fills
 its empty cells and makes a year-month date exact when the two agree; one that disagrees becomes a
-`conflict` flag, never an overwrite; one not in the table becomes a new row. The source column and
-`sources` get a label such as `Credly 2026-10-19`.
+`conflict` flag, never an overwrite; one not in the table becomes a new row. The commit names the
+page.
 
 **Confidence** says how much a reader can lean on the entry. `verified` means the owner has
 checked the entry as it stands. `stated` means the owner said it. `old-cv` and `linkedin` mean it
@@ -153,8 +155,8 @@ reader accepts the label of any known language.
 | `flags` | open questions and wishes | | Flagg |
 
 `person.md` has `about`, `other`, `flags`. `certifications.md` and `education.md` start with a
-table, columns in this order: Name, Issuer, Date, Expires, Source; and Degree, School, From, To,
-Source. The header text is free (it is the language's labels).
+table, columns in this order: Name, Issuer, Date, Expires; and Degree, School, From, To. The
+header text is free (it is the language's labels).
 
 All sections are optional. A different `##` heading is allowed but reported, and `###` and
 deeper are free inside a section.
@@ -186,7 +188,7 @@ questions and conflicts.
    write the files, but only what the owner said or confirmed.
 1. **Be verbose.** Keep every fact the owner gives, and keep their wording. Presentation is
    decided by the tool that uses the profile, not here.
-2. **Never guess.** Unknown is empty. Conflicting sources become a `conflict` flag, resolved by
+2. **Never guess.** Unknown is empty. Conflicting information becomes a `conflict` flag, resolved by
    the owner.
 3. **One entry per file, one change per commit.** Never rename or reuse an id.
 4. **Remove by moving** the file to `_removed/` with `status: removed`, `removed` and
@@ -228,7 +230,9 @@ of its own, even a public one, publish it encrypted with every version inside (s
 
 ## 6. Changing the format
 
-Additive, optional fields are added within schema 1 and listed in `CHANGELOG.md`. Anything that
+Additive, optional fields are added within schema 1 and listed in `CHANGELOG.md`. A field can be
+retired within schema 1 when nothing reads it any more: readers keep accepting it, `lint` warns, and
+`openself fmt` drops it. Anything else that
 changes the meaning or form of existing data is a new schema version, with a migration in
 `openself` that rewrites a profile from the old version to the new one.
 

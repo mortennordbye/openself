@@ -10,7 +10,6 @@ end: 2020-12
 breaks: [2019-02/2019-07]
 employment_type: permanent
 tech: [Windows Server, Linux, VMware vSphere]
-sources: [intake:gammel-cv.pdf, intervju 2026-09-14]
 confidence: stated
 status: active
 last_reviewed: 2026-09-14

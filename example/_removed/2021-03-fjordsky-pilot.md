@@ -17,7 +17,6 @@ allocation: 100
 team_size: 2
 tech: [Azure]
 methods: []
-sources: [intake:gammel-cv.pdf]
 confidence: old-cv
 status: removed
 last_reviewed: 2026-09-14

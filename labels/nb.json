@@ -24,8 +24,8 @@
     "education": {"other": "Annet", "flags": "Flagg"}
   },
   "tables": {
-    "certifications": ["Navn", "Utsteder", "Dato", "Utløper", "Kilde"],
-    "education": ["Grad / fagbrev", "Skole", "Fra", "Til", "Kilde"]
+    "certifications": ["Navn", "Utsteder", "Dato", "Utløper"],
+    "education": ["Grad / fagbrev", "Skole", "Fra", "Til"]
   },
   "flags": {
     "question": "spørsmål",
@@ -54,7 +54,7 @@
     "kind": "Type", "employment": "Ansettelse", "customer": "Kunde", "customers": "Kunder",
     "customer_public": "Kan navngis", "customer_alias": "Omtale når anonym", "sector": "Bransje",
     "role": "Rolle", "start": "Fra", "end": "Til", "breaks": "Pauser", "allocation": "Stillingsandel (%)",
-    "team_size": "Teamstørrelse", "tech": "Teknologi", "methods": "Metoder", "sources": "Kilder", "imports": "Importert fra",
+    "team_size": "Teamstørrelse", "tech": "Teknologi", "methods": "Metoder", "imports": "Importert fra",
     "confidence": "Sikkerhet", "last_reviewed": "Sist sjekket", "employer": "Arbeidsgiver",
     "title": "Tittel", "location": "Sted", "employment_type": "Ansettelsesform", "name": "Navn",
     "languages": "Språk", "clearance": "Sikkerhetsklarering", "clearance_valid_until": "Klarering gyldig til",

@@ -5,9 +5,9 @@
     text, summary = importer.merge(entry, certs, source) # certifications.md with them merged in
 
 Only these two hosts are fetched, and only when the owner asks. A certificate that matches a row in
-the table fills the row's empty cells, makes a year-month date exact when the two agree, and
-becomes the row's source (hand-written labels such as raw.md give way to the account); a date that disagrees becomes a conflict flag for the owner, never an overwrite (SPEC
-rule 2). Certificates not in the table are added as new rows.
+the table fills the row's empty cells and makes a year-month date exact when the two agree; a date
+that disagrees becomes a conflict flag for the owner, never an overwrite (SPEC rule 2). Certificates
+not in the table are added as new rows. The commit says which page they came from.
 """
 
 import json
@@ -118,10 +118,10 @@ def score(a, b):
 def merge(entry, certs, source, lang=None, today=None):
     """certifications.md with the certificates merged in, and a summary of what changed."""
     lang = lang if lang in WORDS else "en"
-    words, label = WORDS[lang], f"{NAMES[source]} {today or model.today()}"
+    words = WORDS[lang]
     secs = model.sections(entry.body, "certifications")
     intro = next((s for s in secs if s.id == "_intro"), None)
-    rows = [list(r) + [""] * (5 - len(r)) for r in model.parse_table(intro.text if intro else "")]
+    rows = [(list(r) + [""] * 4)[:4] for r in model.parse_table(intro.text if intro else "")]
     header = schema.labels(lang)["tables"]["certifications"]
     first = next((ln for ln in (intro.text if intro else "").split("\n") if ln.strip().startswith("|")), "")
     if first:  # keep the table's own header (its text is free, SPEC section 2)
@@ -135,7 +135,7 @@ def merge(entry, certs, source, lang=None, today=None):
             if i not in taken and score(c.name, r[0]) > best:
                 best, at = score(c.name, r[0]), i
         if at < 0:
-            rows.append([c.name, c.issuer, c.date, c.expires, label])
+            rows.append([c.name, c.issuer, c.date, c.expires])
             taken.add(len(rows) - 1)
             summary["added"].append({"name": c.name, "issuer": c.issuer, "date": c.date, "expires": c.expires})
             continue
@@ -155,14 +155,6 @@ def merge(entry, certs, source, lang=None, today=None):
                 text = words["conflict"].format(src=NAMES[source], field=words[field], name=r[0], new=new, old=old)
                 flags.append(text)
                 summary["conflicts"].append(text)
-        # A confirmed row is sourced to the account: other accounts' labels stay, hand-written ones go,
-        # and a label this account already gave is kept so importing again changes nothing.
-        parts = [x.strip() for x in r[4].split(",") if x.strip()]
-        accounts = [x for x in parts if any(x.startswith(n + " ") for n in NAMES.values())]
-        src = ", ".join(accounts if any(x.startswith(NAMES[source] + " ") for x in accounts) else accounts + [label])
-        if src != r[4]:
-            changes["source"] = [r[4], src]
-            r[4] = src
         if changes:
             summary["updated"].append({"name": r[0], "changes": changes})
         else:
@@ -184,7 +176,6 @@ def merge(entry, certs, source, lang=None, today=None):
         fsec.text = "\n".join(x for x in (have.rstrip("\n"), *new_lines) if x)
     meta = dict(entry.meta)
     if summary["added"] or summary["updated"] or summary["conflicts"]:
-        meta["sources"] = [s for s in meta.get("sources") or [] if not s.startswith(NAMES[source] + " ")] + [label]
         meta["last_reviewed"] = today or model.today()
     body = model.join_sections(secs, "certifications", lang)
     return write.render(meta, body, "certifications"), summary

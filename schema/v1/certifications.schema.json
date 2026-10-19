@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/mortennordbye/openself/main/schema/v1/certifications.schema.json",
   "title": "Certifications",
-  "description": "All certifications, one table row each: Name | Issuer | Date | Expires | Source.",
+  "description": "All certifications, one table row each: Name | Issuer | Date | Expires.",
   "type": "object",
   "properties": {
     "schema": {
@@ -23,13 +23,6 @@
       "enum": [
         "certifications"
       ]
-    },
-    "sources": {
-      "type": "array",
-      "description": "Where the facts come from, as labels (never paths): 'interview 2026-05-13', 'intake:old-cv.pdf', 'linkedin', 'self-edit 2026-10-20'.",
-      "items": {
-        "type": "string"
-      }
     },
     "imports": {
       "type": "array",
@@ -95,8 +88,7 @@
       "name",
       "issuer",
       "date",
-      "expires",
-      "source"
+      "expires"
     ]
   }
 }

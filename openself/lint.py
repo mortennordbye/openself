@@ -86,6 +86,9 @@ def check_entry(e, profile, employments, canon, alias, now, add):
     t = e.type
     for field, msg in schema.validate(e.meta, t):
         add("error", e.id, field, msg)
+    for what in model.retired(e.meta, e.body, t):
+        add("warning", e.id, what if what in schema.RETIRED else "", f"{what} is no longer part of the format "
+            "(the profile itself is the source; tools cite entry ids); run openself fmt")
     if e.meta.get("id") != e.id:
         add("error", e.id, "id", f"must equal the file name ({e.id})")
     if e.removed:

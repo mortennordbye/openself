@@ -17,7 +17,6 @@ allocation: 20
 team_size: 3
 tech: [Terraform, GitHub Actions, Go]
 methods: []
-sources: [intervju 2026-09-14]
 confidence: stated
 status: active
 last_reviewed: 2026-09-14

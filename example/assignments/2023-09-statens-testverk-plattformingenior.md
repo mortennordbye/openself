@@ -17,7 +17,6 @@ allocation: 100
 team_size: 6
 tech: [Kubernetes, Argo CD, Terraform, Azure, Azure Kubernetes Service, Prometheus, Grafana]
 methods: [GitOps, Scrum]
-sources: [intervju 2026-09-14]
 confidence: verified
 status: active
 last_reviewed: 2026-09-14

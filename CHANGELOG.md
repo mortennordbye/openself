@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Schema 1, retired: `sources` and the Source column of the certifications and education tables.
+  The profile is the owner's own record and is itself the source; tools cite entry ids, and the
+  history says who changed what. Older files still read; `lint` warns and `openself fmt` drops them.
 - `openself import` and an Import button in the web app: certifications from a public Credly
   profile or Microsoft Learn transcript, with a preview, merged into `certifications.md`.
 - Schema 1, additive: `imports` on certifications, the links to import from again.
