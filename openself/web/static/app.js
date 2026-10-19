@@ -20,7 +20,7 @@
 function OpenSelfUI(root, host) {
   'use strict';
   const PF = { data: null, sel: '', view: 'overview', dirty: false, edit: null, filters: { tech: [], removed: false },
-               query: '', asof: null, hist: null, conflict: null, loading: false, open: new Set() };
+               query: '', asof: null, hist: null, conflict: null, loading: false, open: new Set(), news: null, checked: false };
   const store = (() => { try { return window.localStorage; } catch (e) { return null; } })();
   const KEY = 'openself.sel.' + (host.key || 'profile');
 
@@ -37,7 +37,7 @@ function OpenSelfUI(root, host) {
     layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5', info: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-5M12 8h.01', open: 'M7 17L17 7M9 7h8v8',
     chart: 'M4 20V10M10 20V4M16 20v-7M2 20h20', globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
     git: 'M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9', filter: 'M3 5h18l-7 8v6l-4 2v-8z',
-    back: 'M19 12H5M12 19l-7-7 7-7', book: 'M4 4h6a3 3 0 0 1 3 3v14a2 2 0 0 0-2-2H4zM20 4h-6a3 3 0 0 0-3 3v14a2 2 0 0 1 2-2h7z',
+    back: 'M19 12H5M12 19l-7-7 7-7', download: 'M12 4v12M7 11l5 5 5-5M5 20h14', book: 'M4 4h6a3 3 0 0 1 3 3v14a2 2 0 0 0-2-2H4zM20 4h-6a3 3 0 0 0-3 3v14a2 2 0 0 1 2-2h7z',
   };
   // A label with an icon in front, for rows of facts.
   const withIcon = (n, text, cls) => { const s = el('span', 'os-ic' + (cls ? ' ' + cls : '')); s.append(icon(n), text); return s; };
@@ -110,7 +110,12 @@ function OpenSelfUI(root, host) {
       new: 'New', back: 'Overview', aboutJob: 'About the job', aboutMe: 'About me', yearsWorked: 'years working', assignmentsN: 'assignments',
       certsN: 'certifications', topTech: 'Most used technology', allN: 'All {n}', openQ: 'Open questions', answerAll: 'Answer them all',
       noOpenQ: 'No open questions.', showingOnly: 'Showing only', techTip: 'Show only where it was used', certsEdu: 'Certifications and education',
-      showRemovedN: 'Show removed ({n})', hideRemoved: 'Hide removed', nowWord: 'now' },
+      showRemovedN: 'Show removed ({n})', hideRemoved: 'Hide removed', nowWord: 'now',
+      newsFrom: 'New from {src}: {parts}.', newsAdded: '{n} new', newsUpdated: '{n} filled in', newsConflicts: '{n} disagree', newsSee: 'See and import', notNow: 'Not now',
+      importBtn: 'Import', importTitle: 'Import certifications', importLead: 'Paste the link to your Credly profile or your Microsoft Learn transcript, one per line. Nothing is saved until you have seen what changes.',
+      importWhere: 'Credly: your profile page (credly.com/users/…). Microsoft Learn: Profile → Transcript → Share link.', preview: 'Preview',
+      found: '{n} found', nothingToChange: 'Nothing to change: the table already has all of it.', imported: 'Imported and versioned', importNow: 'Import',
+      importAdd: 'New rows', importUpdate: 'Filled in or made exact', importConflict: 'Disagrees with the table (becomes a conflict to resolve)', emptyCell: '(empty)' },
     nb: { overview: 'Oversikt', timeline: 'Tidslinje', tech: 'Teknologi', questions: 'Spørsmål og hull', addTech: '+ teknologi', allKinds: 'alle typer',
       showRemoved: 'vis fjernet', assignment: 'Oppdrag', employment: 'Ansettelse', history: 'Historikk', newAssignment: 'Nytt oppdrag',
       newEmployment: 'Ny ansettelse', asofBanner: 'Viser profilen slik den var {d} (versjon {r}). Skrivebeskyttet.', backNow: 'Tilbake til nå',
@@ -146,7 +151,12 @@ function OpenSelfUI(root, host) {
       new: 'Ny', back: 'Oversikt', aboutJob: 'Om jobben', aboutMe: 'Om meg', yearsWorked: 'år i arbeid', assignmentsN: 'oppdrag',
       certsN: 'sertifiseringer', topTech: 'Mest brukt teknologi', allN: 'Alle {n}', openQ: 'Åpne spørsmål', answerAll: 'Svar på alle',
       noOpenQ: 'Ingen åpne spørsmål.', showingOnly: 'Viser bare', techTip: 'Vis bare der den ble brukt', certsEdu: 'Sertifiseringer og utdanning',
-      showRemovedN: 'Vis fjernet ({n})', hideRemoved: 'Skjul fjernet', nowWord: 'nå' },
+      showRemovedN: 'Vis fjernet ({n})', hideRemoved: 'Skjul fjernet', nowWord: 'nå',
+      newsFrom: 'Nytt fra {src}: {parts}.', newsAdded: '{n} nye', newsUpdated: '{n} fylt ut', newsConflicts: '{n} uenige', newsSee: 'Se og importer', notNow: 'Ikke nå',
+      importBtn: 'Importer', importTitle: 'Importer sertifiseringer', importLead: 'Lim inn lenken til Credly-profilen din eller Microsoft Learn-transkripsjonen, én per linje. Ingenting lagres før du har sett hva som endres.',
+      importWhere: 'Credly: profilsiden din (credly.com/users/…). Microsoft Learn: Profil → Transkripsjon → Del lenke.', preview: 'Forhåndsvis',
+      found: '{n} funnet', nothingToChange: 'Ingenting å endre: tabellen har alt fra før.', imported: 'Importert og versjonert', importNow: 'Importer',
+      importAdd: 'Nye rader', importUpdate: 'Fylt ut eller gjort nøyaktig', importConflict: 'Uenig med tabellen (blir en konflikt du avgjør)', emptyCell: '(tom)' },
   };
   const t = (k, vars) => { const s = (UI[PF.data && UI[PF.data.lang] ? PF.data.lang : 'en'][k]) ?? UI.en[k] ?? k;
     return typeof s === 'string' && vars ? s.replace(/\{(\w+)\}/g, (_, v) => vars[v]) : s; };
@@ -195,6 +205,7 @@ function OpenSelfUI(root, host) {
       PF.data = d;
       if (!PF.sel || !d.entries.some(e => e.id === PF.sel)) PF.sel = (store && store.getItem(KEY)) || 'person';
       render();
+      if (!PF.checked) { PF.checked = true; checkImports(); }
     } finally { PF.loading = false; }
   }
   async function tick() {
@@ -293,6 +304,7 @@ function OpenSelfUI(root, host) {
       if (openFlags(p)) about.append(el('span', 'os-badge', String(openFlags(p))));
       hero.append(av, info, about); col.append(hero);
     }
+    if (PF.news) col.append(newsBanner(PF.news));
     if (PF.filters.tech.length) {
       const f = el('div', 'os-filter'); f.append(icon('filter'), t('showingOnly'));
       for (const x of PF.filters.tech) { const c = el('button', 'os-chip on', x + ' ×'); c.onclick = () => { PF.filters.tech = PF.filters.tech.filter(y => y !== x); render(); }; f.append(c); }
@@ -360,10 +372,12 @@ function OpenSelfUI(root, host) {
     if (!ro) btn('note', t('edit'), () => { if (!select(e.id)) return; PF.edit = { id: e.id }; PF.dirty = false; drawDetail(); });
     if (all && PF.data.history && !PF.asof) btn('clock', t('history'), () => { if (select(e.id)) entryHistory(byId(e.id)); });
     if (all && !ro && host.request) btn('chat', t('ask'), () => request(e.id));
+    if (all && !ro && e.type === 'certifications') btn('download', t('importBtn'), () => importDialog(e));
   }
   // Shared by both timelines: year bands, career gaps, the now marker and a hover card.
-  function timeFrame(items) {
-    const y0 = Math.floor(Math.min(...items.map(e => ym(val(e, 'start')))) / 12), y1 = Math.floor(Math.max(nowYm(), ...items.map(endYm)) / 12), span = (y1 - y0 + 1) * 12;
+  function timeFrame(items, extra) {
+    const more = extra || [], y0 = Math.floor(Math.min(...items.map(e => ym(val(e, 'start'))), ...more) / 12);
+    const y1 = Math.floor(Math.max(nowYm(), ...items.map(endYm), ...more) / 12), span = (y1 - y0 + 1) * 12;
     return { y0, y1, span, at: mo => (mo - y0 * 12) / span * 100, w: (a, b) => (b - a + 1) / span * 100 };
   }
   function backdrop(f) {
@@ -379,26 +393,50 @@ function OpenSelfUI(root, host) {
   }
   function hoverCard(box) {
     const tip = el('div', 'os-tltip'); box.append(tip);
-    return (bar, e) => {
+    return (bar, e, info) => {
       bar.removeAttribute('title');
       bar.addEventListener('mouseenter', () => {
-        tip.replaceChildren(el('b', '', e.type === 'assignment' ? customerOf(e) : val(e, 'employer')),
+        if (info) tip.replaceChildren(el('b', '', info[0]), el('div', '', info[1]), el('small', '', info[2]));
+        else tip.replaceChildren(el('b', '', e.type === 'assignment' ? customerOf(e) : val(e, 'employer')),
           el('div', '', e.type === 'assignment' ? val(e, 'role') : val(e, 'title')), el('small', '', period(e) + (dur(e) ? ' · ' + dur(e) : '')));
-        if (openFlags(e)) tip.append(el('span', 'os-badge', t('openQuestions', { n: openFlags(e) })));
+        if (!info && openFlags(e)) tip.append(el('span', 'os-badge', t('openQuestions', { n: openFlags(e) })));
         tip.classList.add('on'); });
       bar.addEventListener('mousemove', ev => { const r = box.getBoundingClientRect(), x = ev.clientX - r.left;
-        tip.style.left = Math.min(x + 14, r.width - tip.offsetWidth - 4) + 'px'; tip.style.top = (ev.clientY - r.top + 16) + 'px'; });
+        tip.style.left = Math.min(x + 14, r.width - tip.offsetWidth - 4) + 'px'; const y = ev.clientY - r.top;
+        tip.style.top = (y + 16 + tip.offsetHeight > r.height ? y - tip.offsetHeight - 10 : y + 16) + 'px'; });
       bar.addEventListener('mouseleave', () => tip.classList.remove('on'));
     };
+  }
+  // Certificates from the certifications table: name, issuer, the month taken and the month it expires.
+  function certRows() {
+    const c = byId('certifications'); if (!c || c.removed) return [];
+    const mo = s => ym(String(s || '').slice(0, 7));
+    return ((c.sections.find(x => x.id === '_intro') || {}).text || '').split('\n').filter(l => /^\s*\|/.test(l)).slice(1)
+      .map(l => l.trim().replace(/^\||\|$/g, '').split('|').map(x => x.trim())).filter(r => !r.every(x => /^:?-*:?$/.test(x)))
+      .map(r => ({ name: r[0], issuer: r[1] || '', date: r[2] || '', expires: r[3] || '', at: mo(r[2]), to: mo(r[3]) })).filter(r => r.name && r.at != null);
+  }
+  // One lane of diamonds, one per certificate; an expired one is hollow.
+  function certLane(f, certs, card, cls) {
+    const lane = el('div', cls), rows = [], step = f.w(0, 0) * 3;
+    lane.append(withIcon('award', t('certsN').replace(/^./, x => x.toUpperCase()), 'os-cert-lab'));
+    for (const c of [...certs].sort((a, b) => a.at - b.at)) {
+      const x = f.at(c.at); let r = rows.findIndex(end => end < x - step); if (r < 0) { r = rows.length; rows.push(0); } rows[r] = x;
+      const d = el('button', 'os-cert' + (c.to != null && c.to < nowYm() ? ' expired' : '')); d.style.left = x + '%'; d.style.top = (3 + r * 12) + 'px';
+      card(d, null, [c.name, c.issuer, [c.date, c.expires && '→ ' + c.expires].filter(Boolean).join(' ')]);
+      d.onclick = () => (PF.view === 'overview' ? reveal('certifications', false) : select('certifications')); lane.append(d);
+    }
+    lane.style.height = (rows.length * 12 + 10) + 'px';
+    return lane;
   }
   function miniTimeline(jobs, kidsOf, lit) {
     const box = el('div', 'os-mtl' + (PF.grown ? '' : ' grow')), dated = jobs.filter(j => ym(val(j, 'start')) != null);
     if (!dated.length) return el('div');
     PF.grown = true;
-    const f = timeFrame(dated.flatMap(j => [j, ...kidsOf(j)]).filter(e => ym(val(e, 'start')) != null)), card = hoverCard(box);
+    const certs = certRows(), f = timeFrame(dated.flatMap(j => [j, ...kidsOf(j)]).filter(e => ym(val(e, 'start')) != null), certs.map(c => c.at)), card = hoverCard(box);
     const legend = el('div', 'os-mtl-legend');
     for (const [cls, label] of [['job', t('employment')], ['k-client', enumLabel('kind', 'client')], ['k-internal', enumLabel('kind', 'internal')], ['k-portfolio', enumLabel('kind', 'portfolio')]]) {
       const s = el('span'); s.append(el('i', cls), label); legend.append(s); }
+    if (certs.length) { const s = el('span'); s.append(el('i', 'os-cert-key'), t('certsN')); legend.append(s); }
     const axis = el('div', 'os-mtl-axis'); for (let y = f.y0; y <= f.y1; y++) { const s = el('span', '', String(y)); s.style.left = f.at(y * 12) + '%'; s.style.width = f.w(0, 11) + '%'; axis.append(s); }
     const lanes = el('div', 'os-mtl-lanes'); lanes.append(backdrop(f));
     const bar = (e, cls, top, n) => { const a = ym(val(e, 'start')), b = endYm(e), d = el('button', 'os-mtl-bar ' + cls + (val(e, 'end') === 'ongoing' ? ' ongoing' : ''));
@@ -418,6 +456,7 @@ function OpenSelfUI(root, host) {
       }
       lane.style.height = (rows.length ? 28 + rows.length * 8 : 26) + 'px'; lanes.append(lane);
     }
+    if (certs.length) lanes.append(certLane(f, certs, card, 'os-mtl-lane os-cert-lane'));
     box.append(legend, axis, lanes); return box;
   }
   function sideColumn(side, live, jobs) {
@@ -514,6 +553,7 @@ function OpenSelfUI(root, host) {
     if (PF.data.history && !PF.asof) btn('clock', t('history'), () => entryHistory(e));
     if (!ro && host.request) btn('chat', t('ask'), () => request(e.id));
     if (!ro && (e.type === 'assignment' || e.type === 'employment')) btn('trash', t('remove'), () => removeEntry(e));
+    if (!ro && e.type === 'certifications') btn('download', t('importBtn'), () => importDialog(e));
     head.append(acts); box.append(head);
     if (e.error) { box.append(el('pre', 'os-err', t('unreadable', { e: e.error })));
       if (!ro) { const b = el('button', 'os-btn', t('editRaw')); b.onclick = () => { PF.edit = { id: e.id, raw: true }; drawDetail(); }; box.append(b); } }
@@ -720,6 +760,59 @@ function OpenSelfUI(root, host) {
     saveB.onclick = () => submit(false); if (interview) interview.onclick = () => submit(true);
     d.showModal(); (inputs.customer || inputs.employer).focus();
   }
+  // Certifications from Credly or Microsoft Learn: a preview first, then the import as one commit.
+  // At start-up: are there certificates on the stored pages that the table does not have yet?
+  async function checkImports() {
+    const c = byId('certifications');
+    if (!c || !list(c, 'imports').length || PF.data.readonly || PF.asof) return;
+    let j; try { j = await host.post('import', { dry_run: true }); } catch (err) { return; }
+    if (j && j.ok && j.changed) { PF.news = j; if (PF.view === 'overview' && !PF.dirty) render(); }
+  }
+  function newsBanner(j) {
+    const b = el('div', 'os-news'), n = k => j.results.reduce((a, r) => a + r[k].length, 0);
+    const parts = [[n('added'), 'newsAdded'], [n('updated'), 'newsUpdated'], [n('conflicts'), 'newsConflicts']].filter(x => x[0]).map(([k, w]) => t(w, { n: k })).join(', ');
+    const src = [...new Set(j.results.filter(r => r.added.length + r.updated.length + r.conflicts.length).map(r => r.source === 'credly' ? 'Credly' : 'Microsoft Learn'))].join(', ');
+    const see = el('button', 'os-btn on'), later = el('button', 'os-btn ghost', t('notNow'));
+    see.append(icon('download'), t('newsSee')); see.onclick = () => importDialog(byId('certifications'), j);
+    later.onclick = () => { PF.news = null; render(); };
+    b.append(icon('download'), el('span', '', t('newsFrom', { src, parts })), see, later); return b;
+  }
+  function importDialog(e, ready) {
+    let d = document.getElementById('osimport'); if (d) d.remove();
+    d = el('dialog', 'os-dialog'); d.id = 'osimport'; document.body.append(d);
+    const ta = el('textarea'); ta.rows = 3; ta.value = list(e, 'imports').join('\n'); ta.placeholder = 'https://www.credly.com/users/…\nhttps://learn.microsoft.com/…/transcript/…';
+    const out = el('div', 'os-imp'), row = el('div', 'os-acts end'), msg = el('span', 'os-msg');
+    const cancel = el('button', 'os-btn', t('cancel')), pre = el('button', 'os-btn'), go = el('button', 'os-btn on');
+    pre.append(icon('help'), t('preview')); go.append(icon('download'), t('importNow')); go.disabled = true;
+    d.append(el('h2', '', t('importTitle')), el('p', 'os-lead', t('importLead')), ta, el('p', 'os-lead', t('importWhere')), out);
+    row.append(msg, cancel, pre, go); d.append(row);
+    const urls = () => ta.value.split(/\s+/).filter(Boolean);
+    const show = j => {
+      out.replaceChildren();
+      for (const r of j.results) {
+        const box = el('div', 'os-imp-src'); box.append(el('b', '', r.url.includes('credly') ? 'Credly' : 'Microsoft Learn'), el('span', 'os-mut', ' · ' + t('found', { n: r.found })));
+        const part = (label, items, cls, fmt) => { if (!items.length) return; box.append(el('div', 'os-imp-h ' + cls, label)); const ul = el('ul'); for (const x of items) ul.append(el('li', '', fmt(x))); box.append(ul); };
+        part(t('importAdd'), r.added, 'add', x => x.name + ' · ' + [x.issuer, x.date, x.expires && '→ ' + x.expires].filter(Boolean).join(' · '));
+        part(t('importUpdate'), r.updated, 'upd', x => x.name + ': ' + Object.entries(x.changes).map(([k, v]) => (v[0] || t('emptyCell')) + ' → ' + v[1]).join(', '));
+        part(t('importConflict'), r.conflicts, 'bad', x => x);
+        out.append(box);
+      }
+      if (!j.changed) out.append(el('p', 'os-mut', t('nothingToChange')));
+      go.disabled = !j.changed;
+    };
+    const run = async dry => {
+      msg.textContent = ''; pre.disabled = go.disabled = true; status(t('preview') + ' …', 'busy');
+      const j = await (dry ? host.post('import', { urls: urls(), dry_run: true }) : post('import', { urls: urls() }));
+      status(''); pre.disabled = false;
+      if (!j.ok) { msg.textContent = j.message || t('couldNot'); return; }
+      if (!dry) { d.close(); PF.news = null; toast(j.changed ? t('imported') : t('nothingToChange')); await load(); return; }
+      show(j);
+    };
+    pre.onclick = () => run(true); go.onclick = () => run(false); cancel.onclick = () => d.close();
+    ta.oninput = () => { go.disabled = true; };
+    d.showModal(); ta.focus();
+    if (ready) show(ready);
+  }
   async function removeEntry(e) {
     const reason = prompt(t('removeWhy', { t: titleOf(e) }), ''); if (!reason || !reason.trim()) return;
     const j = await post('remove', { id: e.id, reason, base_sha: e.sha });
@@ -791,7 +884,7 @@ function OpenSelfUI(root, host) {
   function timeline(box) {
     const all = entries().filter(e => !e.removed && (e.type === 'employment' || e.type === 'assignment') && ym(val(e, 'start')) != null);
     if (!all.length) { box.append(el('div', 'os-empty', t('noDates'))); return; }
-    const f = timeFrame(all), pct = mo => f.at(mo) + '%', wid = (a, b) => f.w(a, b) + '%';
+    const certs = certRows(), f = timeFrame(all, certs.map(c => c.at)), pct = mo => f.at(mo) + '%', wid = (a, b) => f.w(a, b) + '%';
     const tl = el('div', 'os-tl'), axis = el('div', 'os-tl-axis'), rows = el('div', 'os-tl-rows'), card = hoverCard(tl);
     for (let y = f.y0; y <= f.y1; y++) { const s = el('span', '', String(y)); s.style.left = pct(y * 12); s.style.width = wid(0, 11); axis.append(s); }
     tl.append(axis); rows.append(backdrop(f));
@@ -817,6 +910,7 @@ function OpenSelfUI(root, host) {
       }
       row.style.height = (30 + lanes.length * 22) + 'px'; rows.append(row);
     }
+    if (certs.length) rows.append(certLane(f, certs, card, 'os-tl-row os-cert-lane'));
     tl.append(rows); box.append(tl, el('div', 'os-lead', t('tlLead')));
   }
   function techView(box) {

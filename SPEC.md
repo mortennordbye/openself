@@ -112,6 +112,7 @@ empty ones included, so a reader sees what is missing.
 | `allocation`, `team_size` | assignment | percent of full time; people on the team, owner included |
 | `tech`, `methods` | both | canonical names from `tech-names.txt` |
 | `sources` | all | labels for where the facts come from (below) |
+| `imports` | certifications | public pages the table is imported from (a Credly profile, a Microsoft Learn transcript link), so the import can run again |
 | `confidence` | all | `verified`, `stated`, `old-cv`, `linkedin`, `needs-confirmation` |
 | `status`, `last_reviewed` | all | `active` or `removed`; date of the last check or change |
 | `removed`, `removed_reason` | removed | when and why, in the owner's words |
@@ -121,6 +122,12 @@ empty ones included, so a reader sees what is missing.
 **Sources** are labels, never paths, so the profile stays self-contained: `interview 2026-05-13`,
 `intake:old-cv.pdf`, `linkedin`, `self-edit 2026-10-20`. A single fact from a different source
 than the rest of the entry can say so inline: `[kilde: linkedin]`.
+
+**Imports.** `openself import` reads the certificates on a public Credly profile or Microsoft
+Learn transcript and merges them into `certifications.md`: a certificate that matches a row fills
+its empty cells and makes a year-month date exact when the two agree; one that disagrees becomes a
+`conflict` flag, never an overwrite; one not in the table becomes a new row. The source column and
+`sources` get a label such as `Credly 2026-10-19`.
 
 **Confidence** says how much a reader can lean on the entry. `verified` means the owner has
 checked the entry as it stands. `stated` means the owner said it. `old-cv` and `linkedin` mean it

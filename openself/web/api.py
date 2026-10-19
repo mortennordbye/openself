@@ -11,7 +11,7 @@ import os
 import re
 import threading
 
-from .. import history, index, lint, model, schema, write
+from .. import history, importer, index, lint, model, schema, write
 
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{2,80}$")
 REV_RE = re.compile(r"^[0-9a-f]{4,40}$")
@@ -256,6 +256,30 @@ def flag(root, d, actor="owner"):
 
 
 @guarded
+def import_(root, d, actor="owner"):
+    """Import certifications from Credly or Microsoft Learn. With dry_run, only say what would change."""
+    writable(root)
+    urls = [str(u) for u in d.get("urls") or [] if str(u).strip()]
+    try:
+        rel, old, new, results = importer.run(root, urls)
+    except FileNotFoundError:
+        raise Refused(404, "this profile has no certifications.md")
+    except OSError as e:
+        raise Refused(502, f"could not read the page: {getattr(e, 'reason', e)}")
+    changed = new != old
+    if d.get("dry_run") or not changed:
+        return {"ok": True, "dry_run": bool(d.get("dry_run")), "changed": changed, "results": results}
+    with lock_for(root):
+        keep_outside_changes(root)
+        with open(os.path.join(root, rel), encoding="utf-8") as f:
+            if f.read() != old:
+                raise Refused(409, "certifications changed while importing; try again")
+        write.write_atomic(os.path.join(root, rel), new, expected_sha=model.sha(old))
+        what = "imported from " + ", ".join(dict.fromkeys(importer.NAMES[r["source"]] for r in results))
+        return finish(root, "certifications", what, actor) | {"changed": True, "results": results}
+
+
+@guarded
 def log(root, id_=""):
     need(root)
     if id_:
@@ -306,4 +330,4 @@ def as_of(root, date, file_prefix=""):
 
 
 GET = {"profile": data, "state": state, "log": log, "show": show, "asof": as_of}
-POST = {"init": init, "save": save, "new": new, "remove": remove, "flag": flag, "restore": restore}
+POST = {"init": init, "save": save, "new": new, "remove": remove, "flag": flag, "restore": restore, "import": import_}

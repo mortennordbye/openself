@@ -54,7 +54,7 @@
     "kind": "Kind", "employment": "Employment", "customer": "Customer", "customers": "Customers",
     "customer_public": "May be named", "customer_alias": "Alias when anonymous", "sector": "Sector",
     "role": "Role", "start": "From", "end": "To", "breaks": "Breaks", "allocation": "Allocation (%)",
-    "team_size": "Team size", "tech": "Technology", "methods": "Methods", "sources": "Sources",
+    "team_size": "Team size", "tech": "Technology", "methods": "Methods", "sources": "Sources", "imports": "Imported from",
     "confidence": "Confidence", "last_reviewed": "Last reviewed", "employer": "Employer",
     "title": "Title", "location": "Location", "employment_type": "Employment type", "name": "Name",
     "languages": "Languages", "clearance": "Security clearance", "clearance_valid_until": "Clearance valid until",

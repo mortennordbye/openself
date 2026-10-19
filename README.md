@@ -34,6 +34,16 @@ questions and gaps. You can edit fields and text, add and remove entries, answer
 a word diff, restore an old version and view the profile as it was on any date. Everything you save
 is a commit. It works in English and Norwegian, following the profile's language.
 
+```
+python3 -m openself import path/to/profile https://www.credly.com/users/<you> --dry-run
+```
+
+imports certifications from a public Credly profile or Microsoft Learn transcript link (Profile →
+Transcript → Share link) into `certifications.md`: new rows are added, empty cells filled, and a
+date that disagrees becomes a conflict for you to resolve. The links are kept, so next time
+`openself import path/to/profile` is enough. The web app has the same as an Import button on the
+certifications.
+
 ## Your own profile repository, encrypted
 
 A profile is personal. To keep it in a GitHub repository, even a public one, keep it encrypted.
