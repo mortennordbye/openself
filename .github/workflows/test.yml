@@ -20,6 +20,11 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: pip install pyyaml  # only to prove the frontmatter is real YAML
+      - name: Install age (for the encrypted sync tests)
+        run: |
+          curl -sSL https://github.com/FiloSottile/age/releases/download/v1.3.2/age-v1.3.2-linux-amd64.tar.gz | tar xz
+          sudo install age/age age/age-keygen /usr/local/bin/
+          age --version
       - run: python -m unittest discover -s tests
       - run: python -m openself fmt --check example
       - run: python -m openself lint --strict --quiet example

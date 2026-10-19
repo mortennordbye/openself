@@ -11,12 +11,22 @@
   show DIR ID REV                                 an entry as it was at a revision
   restore DIR ID REV [--actor ...]                bring an old version back as a new commit
   as-of DIR DATE                                  the index as the profile was on DATE (YYYY-MM-DD)
+
+  serve [DIR] [--port 8765] [--no-browser]        the web app for a profile
+  home [DIR]                                      make DIR a home: .openself/, profile/, .gitignore
+  keys [HOME]                                     make this machine's key and add it to HOME's recipients
+  push [HOME]                                     encrypt profile/ into profile.age, commit and push
+  pull [HOME]                                     fetch profile.age, decrypt it into profile/
+
+In a home folder (one with .openself/), DIR defaults to its profile/ and HOME to the home.
 """
 
 import argparse
 import sys
 
-from . import history, index, lint, model, write
+import os
+
+from . import history, index, lint, model, sync, write
 
 
 def main(argv=None):
@@ -39,7 +49,40 @@ def main(argv=None):
     p = sub.add_parser("restore"); p.add_argument("dir"); p.add_argument("id"); p.add_argument("rev")
     p.add_argument("--actor", default="owner", choices=history.ACTORS)
     p = sub.add_parser("as-of"); p.add_argument("dir"); p.add_argument("date")
+    p = sub.add_parser("serve"); p.add_argument("dir", nargs="?"); p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--no-browser", action="store_true")
+    for name in ("home", "keys", "push", "pull"):
+        sub.add_parser(name).add_argument("dir", nargs="?")
     a = ap.parse_args(argv)
+
+    if a.cmd in ("serve", "keys", "push", "pull"):
+        home = sync.find_home(a.dir or ".")
+        try:
+            if a.cmd == "serve":
+                from .web.server import serve
+                root = a.dir or (sync.profile_dir(home) if home else ".")
+                serve(root, a.port, not a.no_browser, home if home and os.path.abspath(root) == sync.profile_dir(home) else None)
+            elif not home:
+                print("not in an OpenSelf home folder; run `openself home` first", file=sys.stderr)
+                return 1
+            elif a.cmd == "keys":
+                pub, where, created = sync.keys_init(home)
+                print(("created" if created else "found") + f" the key in {where}\npublic key added to {sync.recipients_file(home)}:\n{pub}")
+                if created:
+                    print("Back up the secret key now, for example in a password manager. Without it, profile.age cannot be read.")
+            elif a.cmd == "push":
+                r = sync.push(home)
+                print(f"profile.age: {r['size']} bytes" + (f", commit {r['commit']}" if r["commit"] else ", unchanged") + (", pushed" if r["uploaded"] else ""))
+            else:
+                r = sync.pull(home)
+                print(f"{r['result']} ({r['head']})")
+        except sync.SyncError as e:
+            print(e, file=sys.stderr)
+            return 1
+        return 0
+    if a.cmd == "home":
+        print(make_home(a.dir or "."))
+        return 0
 
     if a.cmd == "init":
         write.init(a.dir, a.owner, [x.strip() for x in a.lang.split(",") if x.strip()], git=not a.no_git)
@@ -88,6 +131,31 @@ def main(argv=None):
         print(f"<!-- as of {a.date}: {rev[:7]} -->")
         print(index.build_index(history.load_at(a.dir, rev)))
     return 0
+
+
+HOME_GITIGNORE = """# The decrypted profile never goes in this repository; only profile.age does.
+/profile/
+.openself/pushed
+.DS_Store
+"""
+
+
+def make_home(path):
+    """Make path a home folder: .openself/, a .gitignore that keeps profile/ out, and git."""
+    path = os.path.abspath(path)
+    os.makedirs(os.path.join(path, ".openself"), exist_ok=True)
+    rc = sync.recipients_file(path)
+    if not os.path.exists(rc):
+        with open(rc, "w", encoding="utf-8") as f:
+            f.write("# age public keys that may decrypt profile.age, one per line (openself keys adds this machine's)\n")
+    gi = os.path.join(path, ".gitignore")
+    if not os.path.exists(gi):
+        with open(gi, "w", encoding="utf-8") as f:
+            f.write(HOME_GITIGNORE)
+    if not os.path.isdir(os.path.join(path, ".git")):
+        import subprocess
+        subprocess.run(["git", "init", "-q", "-b", "main", path], check=True)
+    return f"home ready in {path}; next: openself keys, then openself serve"
 
 
 def fmt(root, check):

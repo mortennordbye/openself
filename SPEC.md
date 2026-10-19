@@ -203,9 +203,8 @@ The profile folder is its own git repository.
 - The whole profile as it was on a date is the last commit on or before that date
   (`openself as-of`).
 
-A tool that uses the profile from another repository adds it as a git submodule, or reads a
-folder it is pointed to. Publishing it (for example encrypted, to a public repository) is the
-publishing tool's business: it must publish whole snapshots and keep the versions.
+A tool that uses the profile reads the folder it is pointed to. To keep a profile in a repository
+of its own, even a public one, publish it encrypted with every version inside (section 7).
 
 ## 5. Checks
 
@@ -226,7 +225,25 @@ Additive, optional fields are added within schema 1 and listed in `CHANGELOG.md`
 changes the meaning or form of existing data is a new schema version, with a migration in
 `openself` that rewrites a profile from the old version to the new one.
 
-## 7. Privacy
+## 7. Sharing encrypted
+
+A profile can be kept in a repository of its own, even a public one, as a single encrypted file.
+Such a repository (a *home*) holds:
+
+```
+.openself/recipients   age public keys allowed to decrypt, one per line, # comments
+profile.age            the profile, encrypted
+.gitignore             keeps profile/ (the decrypted working copy) out
+```
+
+`profile.age` is an [age](https://age-encryption.org) file encrypted to every recipient. Its
+plaintext is the line `OPENSELF-BUNDLE-1`, a newline, the length of the bundle as 8 bytes (big
+endian), a `git bundle` of the whole profile repository (`--all`, so every version), and zero
+bytes up to a multiple of 65536. Readers decrypt, check the first line, take the bundle, and
+clone or fast-forward from it. They never merge silently: if the profile changed in two places,
+the user merges with git.
+
+## 8. Privacy
 
 A profile holds personal data and often confidential customer details. It lives on the owner's
 machine by default. Sharing or publishing it is the owner's choice, and a tool that exports from

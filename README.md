@@ -20,6 +20,47 @@ in later schema versions, in the same shape.
 
 See [SPEC.md](SPEC.md) for the format and [example/](example/) for a complete fictional profile.
 
+## The web app
+
+```
+python3 -m openself serve path/to/profile
+```
+
+opens a local web app (127.0.0.1 only) to read and edit a profile. It has a list grouped by
+employment, a timeline, technology with the assignments that show it, and the open questions and
+gaps. You can edit fields and text, add and remove entries, answer questions, see every change with
+a word diff, restore an old version and view the profile as it was on any date. Everything you save
+is a commit. It works in English and Norwegian, following the profile's language.
+
+## Your own profile repository, encrypted
+
+A profile is personal. To keep it in a GitHub repository, even a public one, keep it encrypted:
+
+```
+mkdir my-openself && cd my-openself
+python3 -m openself home         # .openself/, a .gitignore that keeps profile/ out, git init
+python3 -m openself keys         # makes this machine's age key (post-quantum), adds it as a recipient
+python3 -m openself serve        # create and edit the profile in ./profile
+python3 -m openself push         # encrypt all of it, history included, into profile.age; commit; push
+python3 -m openself pull         # on another machine: fetch, decrypt, fast-forward ./profile
+```
+
+Only `profile.age`, `.openself/recipients` (public keys) and `.gitignore` are committed. The
+decrypted profile stays local. `profile.age` holds the whole profile repository, every version, so
+history and restore work on every machine; GitHub sees one opaque file, padded to 64 KiB steps,
+and when it changes. The secret key lives in the macOS Keychain (elsewhere in
+`~/.config/openself/identity.txt`, readable only by you) and reaches `age` through a pipe, never
+a file. **Back it up**, for example in a password manager: without it the profile cannot be read.
+Add another machine or person by adding their age public key to `.openself/recipients` and pushing.
+
+Needs [age](https://age-encryption.org) 1.3 or newer for post-quantum keys (`brew install age`);
+older versions fall back to classic keys.
+
+Things a public encrypted repository still shows: that it exists, when you push, and the size
+in 64 KiB steps. Encrypted files in public history stay there for good, so a key that leaks later
+opens every old version. Keep the key safe, and use a private repository if that matters more
+than reach.
+
 ## openself, the library
 
 `openself/` is the reference library and command line tool. Python 3.10 or newer, standard
