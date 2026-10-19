@@ -206,7 +206,9 @@ def keys_init(home=None):
     pub = public_key(secret)
     if home:
         # The recipients file is public: label the key with a date, not the user or machine name.
+        start_trust(home)
         add_recipient(home, pub, f"key added {model.today()}")
+        trust(home, [pub])
     return pub, where, created
 
 
@@ -260,6 +262,67 @@ def remove_keychain_copy():
         return subprocess.run(["security", "delete-generic-password", "-s", KEYCHAIN[0], "-a", KEYCHAIN[1]],
                               capture_output=True).returncode == 0
     return False
+
+
+def trusted_file(home):
+    """The recipients this machine has approved. Inside .git, so no pull or checkout can change it."""
+    if history.is_repo(home):
+        path = git_out(home, "rev-parse", "--git-path", "openself-trusted-recipients")
+        if path:
+            return path if os.path.isabs(path) else os.path.join(home, path)
+    return os.path.join(home, ".openself", "trusted")
+
+
+def trusted(home):
+    """The approved keys, or None when this machine has not started a list yet."""
+    try:
+        with open(trusted_file(home), encoding="utf-8") as f:
+            return {l.strip() for l in f if l.strip() and not l.lstrip().startswith("#")}
+    except OSError:
+        return None
+
+
+def trust(home, keys):
+    have = trusted(home) or set()
+    new = [k for k in keys if k not in have]
+    path = trusted_file(home)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
+        if not have:
+            f.write("# age public keys this machine has approved as recipients of profile.age (openself trust)\n")
+        f.writelines(k + "\n" for k in new)
+    return new
+
+
+def start_trust(home):
+    """The first time on a machine, approve the recipients as they are. Returns how many."""
+    if trusted(home) is None and recipients(home):
+        return len(trust(home, recipients(home)))
+    return 0
+
+
+def untrusted(home):
+    """[(key, label)] in .openself/recipients that this machine has not approved."""
+    have = trusted(home) or set()
+    out, label = [], ""
+    try:
+        with open(recipients_file(home), encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    except OSError:
+        return []
+    for line in lines:
+        s = line.strip()
+        if s.startswith("#"):
+            label = s.lstrip("# ")
+        elif s:
+            if s not in have:
+                out.append((s, label))
+            label = ""
+    return out
+
+
+def short_key(key):
+    return f"{key[:16]}...{key[-8:]}"
 
 
 def add_recipient(home, pub, label=""):
@@ -358,7 +421,17 @@ def push(home, commit=True, upload=True, force=False):
     rcpt = recipients(home)
     if not rcpt:
         raise SyncError("no recipients: run `openself keys init` first")
-    guard.install(home)
+    if history.is_repo(home):
+        skipped = guard.install(home)
+        if skipped:
+            raise SyncError("the guard hooks cannot be installed, another tool's hook is in the way: "
+                            + ", ".join(skipped) + ". Remove it (openself puts its own in place) and push again")
+    start_trust(home)
+    new = untrusted(home)
+    if new:
+        raise SyncError("not encrypting: .openself/recipients has keys this machine has not approved:\n  "
+                        + "\n  ".join(short_key(k) + (f" ({l})" if l else "") for k, l in new)
+                        + "\nIf they are yours (a new machine), run `openself trust`. If not, remove them.")
     index.write_all(p)
     history.commit(p, history.message("profile", "changes before an encrypted push", "tool"))
     out = os.path.join(home, "profile.age")
@@ -380,12 +453,14 @@ def push(home, commit=True, upload=True, force=False):
         f.write(push_stamp(home) + "\n")
     result = {"ok": True, "size": len(enc), "commit": None, "uploaded": False}
     if commit and history.is_repo(home):
-        subprocess.run(["git", "-C", home, "add", "profile.age", ".openself/recipients", ".gitignore"], check=True)
-        if subprocess.run(["git", "-C", home, "diff", "--cached", "--quiet"]).returncode:
-            run(["git", "-C", home, "commit", "-q", "-m", "Encrypted profile snapshot"])
+        # Only these files: anything else that happens to be staged stays out of the snapshot.
+        own = ["profile.age", ".openself/recipients", ".gitignore"]
+        subprocess.run(["git", "-C", home, "add", *own], check=True)
+        if subprocess.run(["git", "-C", home, "diff", "--cached", "--quiet", "--", *own]).returncode:
+            run(["git", "-C", home, "commit", "-q", "-m", "Encrypted profile snapshot", "--", *own])
             result["commit"] = git_out(home, "rev-parse", "--short", "HEAD")
         if upload and git_out(home, "remote"):
-            bad = guard.check(home)
+            bad = guard.unpushed(home)
             if bad:
                 raise SyncError("refusing to upload, the home repository would publish:\n  " + "\n  ".join(bad))
             run(["git", "-C", home, "push", "-q"])
@@ -398,6 +473,7 @@ def pull(home, download=True):
     need_age()
     if history.is_repo(home):
         guard.install(home)
+    start_trust(home)  # before the download, so keys that arrive with it need approval
     if download and git_out(home, "remote"):
         run(["git", "-C", home, "pull", "-q", "--ff-only"])
     src = os.path.join(home, "profile.age")
