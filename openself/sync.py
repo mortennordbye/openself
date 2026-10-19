@@ -16,6 +16,8 @@ come from a password manager: a command in ~/.config/openself/identity-command (
 variable OPENSELF_IDENTITY_COMMAND) that prints the key, such as `bw get notes "OpenSelf age key"`.
 """
 
+import getpass
+import json
 import os
 import platform
 import shutil
@@ -23,7 +25,7 @@ import subprocess
 import tempfile
 import threading
 
-from . import history, index, model
+from . import guard, history, index, model
 
 PAD = 64 * 1024
 KEYCHAIN = ("openself", "age-identity")
@@ -92,7 +94,34 @@ def identity_command():
     return cmd
 
 
+def bw_session(interactive=None):
+    """A Bitwarden session for this process: BW_SESSION if set, else unlock now, asking for the master
+    password on the terminal. The session lives in this process's environment only."""
+    if os.environ.get("BW_SESSION"):
+        return os.environ["BW_SESSION"]
+    if not shutil.which("bw"):
+        raise SyncError("the Bitwarden CLI (bw) is not installed: brew install bitwarden-cli")
+    st = subprocess.run(["bw", "status"], capture_output=True, text=True)
+    state = (json.loads(st.stdout or "{}").get("status") if st.returncode == 0 else "") or ""
+    if state == "unauthenticated":
+        raise SyncError("log in to Bitwarden first: bw login")
+    if interactive is None:
+        import sys
+        interactive = sys.stdin.isatty()
+    if not interactive:
+        raise SyncError("Bitwarden is locked: run `export BW_SESSION=$(bw unlock --raw)` in the shell that runs openself")
+    pw = getpass.getpass("Bitwarden master password: ")
+    env = dict(os.environ, OPENSELF_BW_PASSWORD=pw)
+    r = subprocess.run(["bw", "unlock", "--raw", "--passwordenv", "OPENSELF_BW_PASSWORD"], capture_output=True, text=True, env=env)
+    if r.returncode != 0 or not r.stdout.strip():
+        raise SyncError("could not unlock Bitwarden (wrong password?)")
+    os.environ["BW_SESSION"] = r.stdout.strip()
+    return os.environ["BW_SESSION"]
+
+
 def run_identity_command(cmd):
+    if cmd.split()[0] == "bw":
+        bw_session()
     r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=120)
     key = "".join(l.strip() + "\n" for l in r.stdout.splitlines() if l.strip().startswith("AGE-SECRET-KEY"))
     if r.returncode != 0 or not key:
@@ -106,15 +135,20 @@ def run_identity_command(cmd):
 
 def find_identity():
     """(secret key text, where it is), or (None, None) when this machine has none."""
+    cmd = "" if os.environ.get("OPENSELF_IDENTITY") else identity_command()
+    if cmd:
+        return run_identity_command(cmd), f"the command `{cmd}`"
+    return local_identity()
+
+
+def local_identity():
+    """The key from the environment's file, the Keychain or identity.txt, without the command."""
     if os.environ.get("OPENSELF_IDENTITY"):
         path = os.environ["OPENSELF_IDENTITY"]
         if not os.path.exists(path):
             return None, None
         with open(path, encoding="utf-8") as f:
             return f.read(), path
-    cmd = identity_command()
-    if cmd:
-        return run_identity_command(cmd), f"the command `{cmd}`"
     if mac():
         r = subprocess.run(["security", "find-generic-password", "-s", KEYCHAIN[0], "-a", KEYCHAIN[1], "-w"],
                            capture_output=True, text=True)
@@ -174,6 +208,58 @@ def keys_init(home=None):
         # The recipients file is public: label the key with a date, not the user or machine name.
         add_recipient(home, pub, f"key added {model.today()}")
     return pub, where, created
+
+
+BW_ITEM = "OpenSelf age key"
+
+
+def bw(args, **kw):
+    r = subprocess.run(["bw", *args], capture_output=True, text=True, **kw)
+    return r.stdout if r.returncode == 0 else None
+
+
+def to_bitwarden(home=None, item=BW_ITEM, interactive=None):
+    """Put this machine's key in Bitwarden as a secure note and make openself read it from there.
+    Checks that what Bitwarden returns is the same key before anything else changes. Returns
+    (public key, where the key was before, whether a note was created)."""
+    need_age()
+    secret, where = local_identity()
+    pub_cmd = identity_command()
+    if secret is None and pub_cmd:
+        secret, where = find_identity()
+    if secret is None:
+        raise SyncError("no key on this machine to move: run `openself keys` first")
+    pub = public_key(secret)
+    if home and pub not in recipients(home):
+        raise SyncError("this key is not in .openself/recipients; it would not open profile.age")
+    bw_session(interactive)
+    existing = bw(["get", "notes", item])
+    created = False
+    if existing and existing.strip():
+        if public_key(existing) != pub:
+            raise SyncError(f"Bitwarden already has a note named «{item}» with a different key; rename one of them")
+    else:
+        template = json.loads(bw(["get", "template", "item"]) or "{}")
+        template.update(type=2, name=item, notes=secret.strip(), secureNote={"type": 0}, login=None)
+        encoded = bw(["encode"], input=json.dumps(template))
+        if not encoded or bw(["create", "item"], input=encoded.strip()) is None:
+            raise SyncError("Bitwarden would not save the note")
+        created = True
+        bw(["sync"])
+    back = bw(["get", "notes", item]) or ""
+    if not back.strip() or public_key(back) != pub:
+        raise SyncError("the key read back from Bitwarden does not match; nothing else was changed")
+    os.makedirs(os.path.dirname(IDENTITY_COMMAND_FILE), exist_ok=True)
+    with open(IDENTITY_COMMAND_FILE, "w", encoding="utf-8") as f:
+        f.write(f'# OpenSelf reads its age key from this command (no secret here).\nbw get notes "{item}"\n')
+    return pub, where, created
+
+
+def remove_keychain_copy():
+    if mac():
+        return subprocess.run(["security", "delete-generic-password", "-s", KEYCHAIN[0], "-a", KEYCHAIN[1]],
+                              capture_output=True).returncode == 0
+    return False
 
 
 def add_recipient(home, pub, label=""):
@@ -272,6 +358,7 @@ def push(home, commit=True, upload=True, force=False):
     rcpt = recipients(home)
     if not rcpt:
         raise SyncError("no recipients: run `openself keys init` first")
+    guard.install(home)
     index.write_all(p)
     history.commit(p, history.message("profile", "changes before an encrypted push", "tool"))
     out = os.path.join(home, "profile.age")
@@ -298,6 +385,9 @@ def push(home, commit=True, upload=True, force=False):
             run(["git", "-C", home, "commit", "-q", "-m", "Encrypted profile snapshot"])
             result["commit"] = git_out(home, "rev-parse", "--short", "HEAD")
         if upload and git_out(home, "remote"):
+            bad = guard.check(home)
+            if bad:
+                raise SyncError("refusing to upload, the home repository would publish:\n  " + "\n  ".join(bad))
             run(["git", "-C", home, "push", "-q"])
             result["uploaded"] = True
     return result
@@ -306,6 +396,8 @@ def push(home, commit=True, upload=True, force=False):
 def pull(home, download=True):
     """Fetch the newest profile.age, decrypt it and fast-forward profile/ to it."""
     need_age()
+    if history.is_repo(home):
+        guard.install(home)
     if download and git_out(home, "remote"):
         run(["git", "-C", home, "pull", "-q", "--ff-only"])
     src = os.path.join(home, "profile.age")

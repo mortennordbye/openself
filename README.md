@@ -72,7 +72,17 @@ Add another machine or person by adding their age public key to `.openself/recip
 To keep the key only in a password manager, put a command that prints it in
 `~/.config/openself/identity-command` (or `OPENSELF_IDENTITY_COMMAND`). With Bitwarden, store the
 key as a secure note and use `bw get notes "OpenSelf age key"`; unlock first with
-`export BW_SESSION=$(bw unlock --raw)` in the shell that runs `openself`.
+`export BW_SESSION=$(bw unlock --raw)` in the shell that runs `openself`, or let it ask: when the
+vault is locked and `openself` runs in a terminal, it asks for the master password itself.
+`openself keys --bitwarden` moves an existing key there in one go: it saves the note, checks that
+what Bitwarden returns opens the profile, sets up the command, and offers to delete the Keychain
+copy.
+
+A home never publishes plaintext: `openself guard` runs as git pre-commit and pre-push hooks
+(installed by every push and pull) and before each upload, and refuses anything from `profile/`,
+any unexpected file, an unencrypted `profile.age`, or anything but public keys in the recipients.
+Pushing only needs the public keys, so an AI can encrypt and push changes without access to the
+secret key; decrypting stays with you.
 
 Needs [age](https://age-encryption.org) 1.3 or newer for post-quantum keys (`brew install age`);
 older versions fall back to classic keys.
