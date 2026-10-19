@@ -631,12 +631,13 @@ function OpenSelfUI(root, host) {
       const box = el('span', 'os-srcs');
       for (const p of parts) {
         const m = /^(.*?)\s+(\d{4}(?:-\d{2}){0,2})$/.exec(p), name = m ? m[1] : p, date = m ? m[2] : '';
-        const kind = /credly/i.test(name) ? 'credly' : /microsoft learn/i.test(name) ? 'mslearn' : /\.(md|pdf|docx?)\b|^intake:/i.test(name) ? 'doc'
+        const kind = /credly/i.test(name) ? 'credly' : /microsoft learn/i.test(name) ? 'mslearn' : /egne notater|own notes|self-edit/i.test(name) ? 'own'
+          : /\.(md|pdf|docx?)\b|^intake:/i.test(name) ? 'doc'
           : /chat|intervju|interview|samtale/i.test(name) ? 'talk' : 'other';
         const url = kind === 'credly' ? links.find(u => /credly\.com/.test(u)) : kind === 'mslearn' ? links.find(u => /learn\.microsoft\.com/.test(u)) : '';
         const chip = el(url ? 'a' : 'span', 'os-src k-' + kind); if (url) { chip.href = url; chip.target = '_blank'; chip.rel = 'noopener noreferrer'; }
         chip.append(kind === 'credly' || kind === 'mslearn' ? logoMark(kind === 'credly' ? 'Credly' : 'Microsoft Learn')
-          : icon({ doc: 'note', talk: 'chat', other: 'tag' }[kind]), el('span', '', name));
+          : icon({ own: 'user', doc: 'note', talk: 'chat', other: 'tag' }[kind]), el('span', '', name));
         if (date) chip.append(el('small', '', date));
         chip.title = p; box.append(chip);
       }
