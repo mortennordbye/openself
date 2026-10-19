@@ -505,6 +505,7 @@ function OpenSelfUI(root, host) {
     for (const [n, label, ic] of [[(months.size / 12).toFixed(1), t('yearsWorked'), 'calendar'], [live.filter(e => e.type === 'assignment').length, t('assignmentsN'), 'briefcase'], [Math.max(rows, 0), t('certsN'), 'award']]) {
       const d = el('div'); d.append(icon(ic), el('b', '', String(n)), el('span', '', label)); stats.append(d); }
     const sb = el('div', 'os-box'); sb.append(stats); side.append(sb);
+    accountsBox(side);
     const top = [...PF.data.tech].sort((a, b) => b.months - a.months).slice(0, 12);
     if (top.length) {
       const tb = el('div', 'os-box'), h = el('h3'), all = el('button', 'os-link', t('allN', { n: PF.data.tech.length }));
@@ -528,7 +529,6 @@ function OpenSelfUI(root, host) {
     }
     if (!qs.length) qb.append(el('div', 'os-mut', t('noOpenQ')));
     side.append(qb);
-    accountsBox(side);
   }
   // Scroll the overview to an entry and open it; what is not on the stream opens on its own page.
   function reveal(id, quiet) {
@@ -617,8 +617,30 @@ function OpenSelfUI(root, host) {
       const sec = el('div', 'os-sec'); sec.dataset.entry = e.id; sec.dataset.section = s.id; sec.dataset.file = e.file;
       if (s.id !== '_intro') sec.append(el('h3', '', s.known ? sectionLabel(e.type, s.id) : s.heading));
       sec.append(s.id === 'flags' ? flagsView(e, s.text) : renderMd(s.text));
+      if (s.id === '_intro' && sch.table) sourceChips(sec, e, sch.table.indexOf('source'));
       return sec;
     });
+  }
+  // The source cell of a table row as chips: 'raw.md 2026-10, Credly 2026-10-19' becomes two, each with
+  // its date muted; Credly and Microsoft Learn link to the linked page.
+  function sourceChips(sec, e, col) {
+    if (col < 0) return;
+    const links = list(byId('certifications') || { meta: {} }, 'imports');
+    for (const td of sec.querySelectorAll('tbody tr td:nth-child(' + (col + 1) + ')')) {
+      const parts = td.textContent.split(/,\s*(?![^()]*\))/).map(x => x.trim()).filter(Boolean); if (!parts.length) continue;
+      const box = el('span', 'os-srcs');
+      for (const p of parts) {
+        const m = /^(.*?)\s+(\d{4}(?:-\d{2}){0,2})$/.exec(p), name = m ? m[1] : p, date = m ? m[2] : '';
+        const kind = /credly/i.test(name) ? 'credly' : /microsoft learn/i.test(name) ? 'mslearn' : /\.(md|pdf|docx?)\b|^intake:/i.test(name) ? 'doc'
+          : /chat|intervju|interview|samtale/i.test(name) ? 'talk' : 'other';
+        const url = kind === 'credly' ? links.find(u => /credly\.com/.test(u)) : kind === 'mslearn' ? links.find(u => /learn\.microsoft\.com/.test(u)) : '';
+        const chip = el(url ? 'a' : 'span', 'os-src k-' + kind); if (url) { chip.href = url; chip.target = '_blank'; chip.rel = 'noopener noreferrer'; }
+        chip.append(icon({ credly: 'award', mslearn: 'book', doc: 'note', talk: 'chat', other: 'tag' }[kind]), el('span', '', name));
+        if (date) chip.append(el('small', '', date));
+        chip.title = p; box.append(chip);
+      }
+      td.replaceChildren(box);
+    }
   }
   function flagsView(e, text) {
     const wrap = el('div', 'os-flags');
