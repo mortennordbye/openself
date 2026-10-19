@@ -3,31 +3,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="/static/app.css">
 <style>
-  :root { color-scheme: dark; --bg: #1f1f23; --panel: #17171a; --line: #303036; --fg: #e6e6ea; --mut: #8e8e98; --acc: #6aa4f8;
-          --hl: rgba(106,164,248,.16); --warn: #f0ad4e; --bad: #e5534b; --ok: #4caf50; }
+  :root { color-scheme: light; --bg: #f5f6f8; --panel: #fff; --line: #e3e6eb; --fg: #1d232b; --mut: #6b7380; --strong: #0b0f14; --acc: #2457c5; --acc2: #2a9d8f;
+          --hl: #eaf0fc; --warn: #c97a00; --bad: #d1453b; --ok: #2e9d6a; --field: #fff; --card: #fff; --shadow: 0 12px 32px rgba(16,32,56,.14); }
+  /* Dark follows the system unless the theme button chose one (data-theme on <html>). */
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; --bg: #16181d; --panel: #1d2026; --line: #2c313a; --fg: #e3e6eb; --mut: #8b93a1;
+    --strong: #f5f7fa; --acc: #6d9cf5; --acc2: #3fbfa8; --hl: rgba(109,156,245,.16); --warn: #e9a73b; --bad: #ef6b61; --ok: #4cc38a; --field: #16181d; --card: #1d2026;
+    --shadow: 0 12px 32px rgba(0,0,0,.5); } }
+  :root[data-theme="dark"] { color-scheme: dark; --bg: #16181d; --panel: #1d2026; --line: #2c313a; --fg: #e3e6eb; --mut: #8b93a1;
+    --strong: #f5f7fa; --acc: #6d9cf5; --acc2: #3fbfa8; --hl: rgba(109,156,245,.16); --warn: #e9a73b; --bad: #ef6b61; --ok: #4cc38a; --field: #16181d; --card: #1d2026;
+    --shadow: 0 12px 32px rgba(0,0,0,.5); }
   html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.45 -apple-system, system-ui, sans-serif; }
   body { display: grid; grid-template-rows: auto 1fr; }
-  header { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 50px; border-bottom: 1px solid var(--line); background: var(--panel); }
-  .brand { font-weight: 700; letter-spacing: .02em; display: flex; align-items: center; gap: 8px; }
+  header { display: flex; align-items: center; gap: 14px; padding: 0 20px; min-height: 52px; border-bottom: 1px solid var(--line); background: var(--panel); position: relative; z-index: 2; }
+  .brand { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
   .brand i { width: 18px; height: 18px; border-radius: 50%; background: conic-gradient(#3fc1a5, #6aa4f8, #b48cf2, #3fc1a5); display: inline-block; }
-  #owner { color: var(--mut); } #status { color: var(--mut); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #nav { display: flex; flex: 1; min-width: 0; }
+  #status { color: var(--mut); font-size: 12px; white-space: nowrap; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; } .dot.err { background: var(--bad); } .dot.busy { background: var(--warn); }
-  .sp { flex: 1; }
-  .find { display: flex; align-items: center; gap: 6px; background: #101012; border: 1px solid var(--line); border-radius: 6px; padding: 0 8px; }
-  .find input { background: none; border: 0; color: var(--fg); padding: 5px 0; width: 170px; font: inherit; outline: none; } #hits { color: var(--mut); font-size: 12px; }
-  .sync { display: flex; align-items: center; gap: 6px; } .sync .note { color: var(--mut); font-size: 12px; } .sync .note.warn { color: var(--warn); }
+  .find { display: flex; align-items: center; gap: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 0 8px; }
+  .find input { background: none; border: 0; color: var(--fg); padding: 6px 0; width: 160px; font: inherit; outline: none; } #hits { color: var(--mut); font-size: 12px; white-space: nowrap; }
+  .sync { display: flex; align-items: center; gap: 6px; } .sync .note { color: var(--mut); font-size: 12px; white-space: nowrap; } .sync .note.warn { color: var(--warn); }
   main { min-height: 0; overflow: hidden; } main > .os { height: 100%; }
   .first { max-width: 520px; margin: 60px auto; padding: 0 20px; } .first h1 { font-size: 22px; } .first p { color: var(--mut); line-height: 1.6; }
   .first label { display: block; margin: 12px 0 4px; color: var(--mut); font-size: 12px; }
-  .first input, .first select { width: 100%; box-sizing: border-box; background: #101012; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; font: inherit; }
-  #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #2b2b31; border: 1px solid var(--line); padding: 8px 14px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .first input, .first select { width: 100%; box-sizing: border-box; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; font: inherit; }
+  #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 10; }
   #toast.show { opacity: 1; }
+  .hi { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; color: var(--mut); }
+  #theme { display: grid; place-items: center; background: none; border: 0; color: var(--mut); cursor: pointer; font-size: 15px; padding: 4px; border-radius: 6px; line-height: 1; }
+  #theme:hover { color: var(--fg); background: var(--bg); }
 </style></head><body>
 <header>
-  <span class="brand"><i></i>OpenSelf</span><span id="owner"></span><span class="dot" id="dot"></span><span id="status"></span>
-  <span class="sp"></span>
-  <label class="find"><input id="q" type="search" placeholder="Search"><span id="hits"></span></label>
+  <span class="brand"><i></i>OpenSelf</span>
+  <nav id="nav"></nav>
+  <span class="dot" id="dot"></span><span id="status"></span>
   <span class="sync" id="sync" hidden></span>
+  <label class="find"><svg class="hi" viewBox="0 0 24 24"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4"/></svg><input id="q" type="search" placeholder="Search"><span id="hits"></span></label>
+  <button id="theme"></button>
 </header>
 <main id="main"></main>
 <div id="toast"></div>
@@ -35,7 +47,17 @@
 <script src="/static/app.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const nb = navigator.language.startsWith('nb') || navigator.language.startsWith('no');
+// Light or dark: the system's choice until the button picks one, then that, remembered in this browser.
+const SVG = d => `<svg class="hi" viewBox="0 0 24 24"><path d="${d}"/></svg>`;
+const SUN = 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4';
+const MOON = 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z';
+const dark = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+function drawTheme() { $('theme').innerHTML = SVG(dark() ? SUN : MOON); $('theme').title = dark() ? (nb ? 'Lyst tema' : 'Light theme') : (nb ? 'Mørkt tema' : 'Dark theme'); }
+try { const th = localStorage.getItem('openself.theme'); if (th) document.documentElement.dataset.theme = th; } catch (e) {}
+$('theme').onclick = () => { const th = dark() ? 'light' : 'dark'; document.documentElement.dataset.theme = th; try { localStorage.setItem('openself.theme', th); } catch (e) {} drawTheme(); };
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawTheme);
+// Norwegian when the profile is written in it; before there is a profile, follow the browser.
+let nb = navigator.language.startsWith('nb') || navigator.language.startsWith('no');
 const toast = t => { const e = $('toast'); e.textContent = t; e.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('show'), 2600); };
 const get = async (name, params) => (await fetch('/api/' + name + (params ? '?' + new URLSearchParams(params) : ''), { cache: 'no-store' })).json();
 const post = async (name, body) => {
@@ -45,7 +67,9 @@ const post = async (name, body) => {
 let ui = null;
 const host = {
   get, post, toast, key: location.port,
-  status: (t, kind) => { $('status').textContent = t; $('dot').className = 'dot' + (kind ? ' ' + kind : ''); },
+  // The dot always shows the state; the text only when something is going on.
+  status: (t, kind) => { $('status').textContent = kind ? t : ''; $('dot').className = 'dot' + (kind ? ' ' + kind : ''); $('dot').title = t; },
+  nav: $('nav'),
   hits: t => { $('hits').textContent = t; },
   changed: () => drawSync(),
 };
@@ -54,13 +78,14 @@ async function drawSync() {
   if (!s.ok || !s.home) { box.hidden = true; return; }
   box.hidden = false; box.replaceChildren();
   const note = document.createElement('span'); note.className = 'note';
-  const btn = (label, title, fn) => { const b = document.createElement('button'); b.className = 'os-btn'; b.textContent = label; b.title = title; b.onclick = fn; box.append(b); return b; };
+  const btn = (label, title, fn, d) => { const b = document.createElement('button'); b.className = 'os-btn'; b.innerHTML = d ? SVG(d) : ''; b.append(label); b.title = title; b.onclick = fn; box.append(b); return b; };
   if (!s.key) { note.textContent = nb ? 'Ingen nøkkel på denne maskinen' : 'No key on this machine'; note.classList.add('warn'); box.append(note);
     btn(nb ? 'Lag nøkkel' : 'Create key', nb ? 'Lager en nøkkel og lagrer den i nøkkelringen' : 'Creates a key and stores it in the keychain', () => act('keys')); return; }
-  note.textContent = s.unpushed ? (nb ? 'Endringer ikke kryptert og lastet opp' : 'Changes not encrypted and uploaded') : (nb ? 'Lastet opp' : 'Up to date');
+  note.textContent = s.unpushed ? (nb ? '● Ikke lastet opp' : '● Not uploaded') : (nb ? 'Lastet opp' : 'Up to date');
+  if (s.unpushed) note.title = nb ? 'Endringer ikke kryptert og lastet opp' : 'Changes not encrypted and uploaded';
   if (s.unpushed) note.classList.add('warn'); box.append(note);
-  btn(nb ? 'Hent' : 'Pull', nb ? 'Hent og dekrypter siste versjon' : 'Fetch and decrypt the latest version', () => act('pull'));
-  btn(nb ? 'Krypter og last opp' : 'Encrypt and push', nb ? 'Krypterer hele profilen med historikk til profile.age og laster opp' : 'Encrypts the whole profile with history into profile.age and pushes it', () => act('push'));
+  btn(nb ? 'Hent' : 'Pull', nb ? 'Hent og dekrypter siste versjon' : 'Fetch and decrypt the latest version', () => act('pull'), 'M12 4v12M7 11l5 5 5-5M5 20h14');
+  btn(nb ? 'Last opp' : 'Push', nb ? 'Krypterer hele profilen med historikk til profile.age og laster opp' : 'Encrypts the whole profile with history into profile.age and pushes it', () => act('push'), 'M12 20V8M7 13l5-5 5 5M5 4h14');
 }
 async function act(name) {
   host.status(nb ? 'Jobber ...' : 'Working ...', 'busy');
@@ -88,13 +113,14 @@ function firstRun() {
 async function start() {
   const d = await get('profile');
   if (d.status === 404 || (!d.ok && /no profile/.test(d.message || ''))) { window.PROFILE_PATH = d.path; firstRun(); return; }
-  $('owner').textContent = (d.manifest && d.manifest.owner) || '';
+  nb = d.lang === 'nb'; drawTheme();
   document.title = 'OpenSelf' + (d.manifest && d.manifest.owner ? ': ' + d.manifest.owner : '');
   document.documentElement.lang = d.lang || 'en'; $('q').placeholder = d.lang === 'nb' ? 'Søk' : 'Search';
   if (ui) ui.destroy();
   ui = OpenSelfUI($('main'), host); await ui.tick(); drawSync();
   if (!start.loop) start.loop = setInterval(() => ui && ui.tick(), 1500);
 }
+drawTheme();
 $('q').addEventListener('input', () => ui && ui.search($('q').value, true));
 setInterval(() => { if (!document.hidden) drawSync(); }, 15000);
 start();

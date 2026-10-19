@@ -26,9 +26,11 @@ See [SPEC.md](SPEC.md) for the format and [example/](example/) for a complete fi
 python3 -m openself serve path/to/profile
 ```
 
-opens a local web app (127.0.0.1 only) to read and edit a profile. It has a list grouped by
-employment, a timeline, technology with the assignments that show it, and the open questions and
-gaps. You can edit fields and text, add and remove entries, answer questions, see every change with
+opens a local web app (127.0.0.1 only) to read and edit a profile. It opens on an overview: the
+career as a stream, newest first, with each assignment opening in place under its employment, a
+compact timeline, the most used technology (click one to show only where it was used) and the open
+questions. Beside it are a full timeline, technology with the assignments that show it, and the open
+questions and gaps. You can edit fields and text, add and remove entries, answer questions, see every change with
 a word diff, restore an old version and view the profile as it was on any date. Everything you save
 is a commit. It works in English and Norwegian, following the profile's language.
 

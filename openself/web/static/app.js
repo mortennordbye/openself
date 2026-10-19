@@ -11,14 +11,16 @@
 //   path(files, root)             optional: the files behind what is shown
 //   request(id, text)             optional: ask an assistant about an entry (adds a button)
 //   changed()                     optional: called after every write
+//   nav                           optional: an element in the host's header to hold the view tabs and
+//                                 buttons; without it they are a bar at the top of the container
 // The rendered sections carry data-entry, data-section and data-file, so a host can anchor
 // comments on selected text.
 
 /* exported OpenSelfUI */
 function OpenSelfUI(root, host) {
   'use strict';
-  const PF = { data: null, sel: '', view: 'list', dirty: false, edit: null, filters: { tech: [], kind: '', removed: false },
-               query: '', asof: null, hist: null, conflict: null, loading: false };
+  const PF = { data: null, sel: '', view: 'overview', dirty: false, edit: null, filters: { tech: [], removed: false },
+               query: '', asof: null, hist: null, conflict: null, loading: false, open: new Set() };
   const store = (() => { try { return window.localStorage; } catch (e) { return null; } })();
   const KEY = 'openself.sel.' + (host.key || 'profile');
 
@@ -28,7 +30,18 @@ function OpenSelfUI(root, host) {
     plus: 'M12 5v14M5 12h14', clock: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0', note: 'M5 4h14v16H5zM9 9h6M9 13h6M9 17h3',
     chat: 'M4 5h16v11H9l-5 4zM8 9h8M8 12h5', trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13', save: 'M5 3h11l4 4v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM7 3v6h8V3M7 21v-7h10v7',
     tag: 'M3 12V4h8l10 10-8 8z', help: 'M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
+    home: 'M3 11l9-7 9 7M5 10v10h14V10M10 20v-6h4v6', timeline: 'M3 6h10M7 12h14M3 18h8', code: 'M8 7l-5 5 5 5M16 7l5 5-5 5',
+    briefcase: 'M3 8h18v12H3zM8 8V5h8v3M3 13h18', calendar: 'M4 6h16v15H4zM4 10h16M8 3v4M16 3v4',
+    award: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.5 14L7 22l5-3 5 3-1.5-8', pin: 'M12 21s-7-6.3-7-12a7 7 0 0 1 14 0c0 5.7-7 12-7 12zM12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5',
+    building: 'M4 21V5l8-3v19M12 9h8v12M8 8h.01M8 12h.01M8 16h.01M16 13h.01M16 17h.01M2 21h20', user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 4-6 8-6s8 2 8 6',
+    layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5', info: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-5M12 8h.01', open: 'M7 17L17 7M9 7h8v8',
+    chart: 'M4 20V10M10 20V4M16 20v-7M2 20h20', globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
+    git: 'M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9', filter: 'M3 5h18l-7 8v6l-4 2v-8z',
+    back: 'M19 12H5M12 19l-7-7 7-7', book: 'M4 4h6a3 3 0 0 1 3 3v14a2 2 0 0 0-2-2H4zM20 4h-6a3 3 0 0 0-3 3v14a2 2 0 0 1 2-2h7z',
   };
+  // A label with an icon in front, for rows of facts.
+  const withIcon = (n, text, cls) => { const s = el('span', 'os-ic' + (cls ? ' ' + cls : '')); s.append(icon(n), text); return s; };
+  const KIND_ICON = { client: 'briefcase', internal: 'building', portfolio: 'layers' };
   const icon = n => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('class', 'os-i'); s.setAttribute('viewBox', '0 0 24 24');
     const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', ICONS[n] || ''); s.append(p); return s; };
   const toast = t => host.toast ? host.toast(t) : console.log(t);
@@ -62,7 +75,7 @@ function OpenSelfUI(root, host) {
 
   // ---- words ----------------------------------------------------------------------------------
   const UI = {
-    en: { list: 'List', timeline: 'Timeline', tech: 'Technology', questions: 'Questions and gaps', addTech: '+ technology', allKinds: 'all kinds',
+    en: { overview: 'Overview', timeline: 'Timeline', tech: 'Technology', questions: 'Questions and gaps', addTech: '+ technology', allKinds: 'all kinds',
       showRemoved: 'show removed', assignment: 'Assignment', employment: 'Employment', history: 'History', newAssignment: 'New assignment',
       newEmployment: 'New employment', asofBanner: 'Showing the profile as it was on {d} (version {r}). Read-only.', backNow: 'Back to now',
       readonly: 'This profile is read-only (readonly in openself.json). Change the original.', editHint: 'Edit, or select text', prevVersion: 'Earlier version',
@@ -93,8 +106,12 @@ function OpenSelfUI(root, host) {
       qLead: 'What is missing or needs clearing up. Answer here, edit the entry, or ask the assistant. Errors (red) must be fixed, warnings (yellow) are probably mistakes, the rest are gaps.',
       nothing: 'Nothing to clear up.', careerGap: 'Gaps in the career', open: 'Open', entries: '{n} entries', updated: 'Profile updated',
       you: 'you', assistant: 'assistant', tool: 'tool', unknownPeriod: 'unknown period', roleQ: 'role?', titleQ: 'title?', customerQ: 'customer?', portfolio: 'portfolio',
-      years: 'y', months: 'mo', openQuestions: '{n} open questions', confidenceUnset: 'confidence not set', untilWord: ' until ', visitAll: 'Show everything with {t}' },
-    nb: { list: 'Liste', timeline: 'Tidslinje', tech: 'Teknologi', questions: 'Spørsmål og hull', addTech: '+ teknologi', allKinds: 'alle typer',
+      years: 'y', months: 'mo', openQuestions: '{n} open questions', confidenceUnset: 'confidence not set', untilWord: ' until ', visitAll: 'Show everything with {t}',
+      new: 'New', back: 'Overview', aboutJob: 'About the job', aboutMe: 'About me', yearsWorked: 'years working', assignmentsN: 'assignments',
+      certsN: 'certifications', topTech: 'Most used technology', allN: 'All {n}', openQ: 'Open questions', answerAll: 'Answer them all',
+      noOpenQ: 'No open questions.', showingOnly: 'Showing only', techTip: 'Show only where it was used', certsEdu: 'Certifications and education',
+      showRemovedN: 'Show removed ({n})', hideRemoved: 'Hide removed', nowWord: 'now' },
+    nb: { overview: 'Oversikt', timeline: 'Tidslinje', tech: 'Teknologi', questions: 'Spørsmål og hull', addTech: '+ teknologi', allKinds: 'alle typer',
       showRemoved: 'vis fjernet', assignment: 'Oppdrag', employment: 'Ansettelse', history: 'Historikk', newAssignment: 'Nytt oppdrag',
       newEmployment: 'Ny ansettelse', asofBanner: 'Viser profilen slik den var {d} (versjon {r}). Skrivebeskyttet.', backNow: 'Tilbake til nå',
       readonly: 'Denne profilen er skrivebeskyttet (readonly i openself.json). Endringer gjøres i originalen.', editHint: 'Rediger, eller marker tekst', prevVersion: 'Tidligere versjon',
@@ -125,7 +142,11 @@ function OpenSelfUI(root, host) {
       qLead: 'Det som mangler eller må avklares. Svar her, rediger oppføringen, eller be om intervju. Feil (rødt) må rettes, advarsler (gult) er trolig feil, resten er hull å fylle.',
       nothing: 'Ingenting å avklare.', careerGap: 'Hull i karrieren', open: 'Åpne', entries: '{n} oppføringer', updated: 'Profilen er oppdatert',
       you: 'deg', assistant: 'assistent', tool: 'verktøy', unknownPeriod: 'ukjent periode', roleQ: 'rolle?', titleQ: 'tittel?', customerQ: 'kunde?', portfolio: 'portefølje',
-      years: 'år', months: 'mnd', openQuestions: '{n} åpne spørsmål', confidenceUnset: 'sikkerhet ikke satt', untilWord: ' til ', visitAll: 'Vis alt med {t}' },
+      years: 'år', months: 'mnd', openQuestions: '{n} åpne spørsmål', confidenceUnset: 'sikkerhet ikke satt', untilWord: ' til ', visitAll: 'Vis alt med {t}',
+      new: 'Ny', back: 'Oversikt', aboutJob: 'Om jobben', aboutMe: 'Om meg', yearsWorked: 'år i arbeid', assignmentsN: 'oppdrag',
+      certsN: 'sertifiseringer', topTech: 'Mest brukt teknologi', allN: 'Alle {n}', openQ: 'Åpne spørsmål', answerAll: 'Svar på alle',
+      noOpenQ: 'Ingen åpne spørsmål.', showingOnly: 'Viser bare', techTip: 'Vis bare der den ble brukt', certsEdu: 'Sertifiseringer og utdanning',
+      showRemovedN: 'Vis fjernet ({n})', hideRemoved: 'Skjul fjernet', nowWord: 'nå' },
   };
   const t = (k, vars) => { const s = (UI[PF.data && UI[PF.data.lang] ? PF.data.lang : 'en'][k]) ?? UI.en[k] ?? k;
     return typeof s === 'string' && vars ? s.replace(/\{(\w+)\}/g, (_, v) => vars[v]) : s; };
@@ -187,101 +208,263 @@ function OpenSelfUI(root, host) {
       const mine = d.entries.find(e => e.id === PF.edit.id), base = PF.data.entries.find(e => e.id === PF.edit.id);
       PF.data = Object.assign(d, { entries: d.entries.map(e => e.id === PF.edit.id && base ? base : e) });
       if (mine && base && mine.sha !== base.sha && !PF.conflict) { PF.conflict = { current_text: mine.text, current_sha: mine.sha }; drawConflict(); }
-      drawList();
     } catch (e) { status('', 'err'); }
   }
 
   // ---- layout ---------------------------------------------------------------------------------
   function render() {
-    const old = root.querySelector('.os');
-    const ls = old ? old.querySelector('.os-list')?.scrollTop : 0, ds = old ? old.querySelector('.os-detail')?.scrollTop : 0;
-    const box = el('div', 'os');
-    box.append(toolbar());
+    const old = root.querySelector('.os-main'), keep = old && old.classList.contains('osv-' + PF.view) ? old.firstChild.scrollTop : 0;
+    const box = el('div', 'os'), bar = toolbar();
+    if (host.nav) host.nav.replaceChildren(bar); else box.append(bar);
     if (PF.asof) {
       const b = el('div', 'os-banner'); b.append(icon('clock'), el('span', '', t('asofBanner', { d: PF.asof.date, r: PF.asof.rev })));
       const back = el('button', 'os-btn', t('backNow')); back.onclick = () => { PF.asof = null; render(); }; b.append(back); box.append(b);
     }
     if (PF.data.readonly) box.append(el('div', 'os-banner', t('readonly')));
-    const main = el('div', 'os-main osv-' + PF.view);
-    if (PF.view === 'list') main.append(el('nav', 'os-list'), el('section', 'os-detail'));
-    else main.append(el('section', 'os-wide'));
-    box.append(main);
+    const main = el('div', 'os-main osv-' + PF.view), sc = el('div', 'os-scroll');
+    main.append(sc); box.append(main);
     root.replaceChildren(box);
     status(PF.asof ? t('prevVersion') : PF.data.readonly ? t('roStatus') : t('editHint'));
-    if (PF.view === 'list') { drawList(); drawDetail(); main.querySelector('.os-list').scrollTop = ls || 0; main.querySelector('.os-detail').scrollTop = ds || 0; }
-    else if (PF.view === 'timeline') timeline(main.firstChild);
-    else if (PF.view === 'tech') techView(main.firstChild);
-    else questions(main.firstChild);
+    if (PF.view === 'overview') overview(sc);
+    else if (PF.view === 'entry') {
+      const page = el('div', 'os-page'), back = el('button', 'os-btn ghost os-back'); back.append(icon('back'), t('back'));
+      back.onclick = () => { if (!leaveEdit()) return; const id = PF.sel; PF.view = 'overview'; render(); reveal(id, true); };
+      page.append(back, el('section', 'os-detail')); sc.append(page); drawDetail();
+    } else {
+      const w = el('section', 'os-wide'); sc.append(w);
+      if (PF.view === 'timeline') timeline(w); else if (PF.view === 'tech') techView(w); else questions(w);
+    }
+    sc.scrollTop = keep;
     if (PF.conflict) drawConflict();
   }
   function toolbar() {
-    const bar = el('div', 'os-bar'), seg = el('span', 'os-seg');
+    const bar = el('div', 'os-bar' + (host.nav ? ' os-bar-host' : '')), seg = el('span', 'os-seg');
     const nq = PF.data.issues.filter(i => i.level !== 'warning').length;
-    for (const [v, label] of [['list', t('list')], ['timeline', t('timeline')], ['tech', t('tech')], ['questions', t('questions') + (nq ? ' (' + nq + ')' : '')]]) {
-      const b = el('button', 'os-segb' + (PF.view === v ? ' on' : ''), label);
+    for (const [v, label, ic] of [['overview', t('overview'), 'home'], ['timeline', t('timeline'), 'timeline'], ['tech', t('tech'), 'code'], ['questions', t('questions'), 'help']]) {
+      const b = el('button', 'os-segb' + (PF.view === v || (v === 'overview' && PF.view === 'entry') ? ' on' : '')); b.append(icon(ic), label);
+      if (v === 'questions' && nq) b.append(el('span', 'os-badge', String(nq)));
       b.onclick = () => { if (!leaveEdit()) return; PF.view = v; render(); }; seg.append(b);
     }
-    bar.append(seg);
-    const tsel = el('select', 'os-select'); tsel.append(el('option', '', t('addTech')));
-    for (const x of PF.data.tech) { const o = el('option', '', `${x.name} (${x.ids.length})`); o.value = x.name; tsel.append(o); }
-    tsel.onchange = () => { if (tsel.value && !PF.filters.tech.includes(tsel.value)) PF.filters.tech.push(tsel.value); PF.view = 'list'; render(); };
-    bar.append(tsel);
-    for (const x of PF.filters.tech) { const ch = el('button', 'os-chip on', x + ' ×'); ch.onclick = () => { PF.filters.tech = PF.filters.tech.filter(y => y !== x); render(); }; bar.append(ch); }
-    const ksel = el('select', 'os-select');
-    for (const [v, l] of [['', t('allKinds')], ['client', enumLabel('kind', 'client')], ['portfolio', enumLabel('kind', 'portfolio')], ['internal', enumLabel('kind', 'internal')]]) { const o = el('option', '', l); o.value = v; ksel.append(o); }
-    ksel.value = PF.filters.kind; ksel.onchange = () => { PF.filters.kind = ksel.value; drawList(); }; bar.append(ksel);
-    const rm = el('label', 'os-check'); const cb = el('input'); cb.type = 'checkbox'; cb.checked = PF.filters.removed;
-    cb.onchange = () => { PF.filters.removed = cb.checked; drawList(); }; rm.append(cb, ' ' + t('showRemoved')); bar.append(rm);
-    bar.append(el('span', 'os-sp'));
+    bar.append(seg, el('span', 'os-sp'));
+    if (PF.data.history) { const h = el('button', 'os-btn ghost'); h.append(icon('clock'), t('history')); h.onclick = e => { e.stopPropagation(); profileHistory(bar); }; bar.append(h); }
     if (!PF.data.readonly && !PF.asof) {
-      const na = el('button', 'os-btn'); na.append(icon('plus'), t('assignment')); na.title = t('newAssignment'); na.onclick = () => newDialog('assignment'); bar.append(na);
-      const ne = el('button', 'os-btn'); ne.append(icon('plus'), t('employment')); ne.title = t('newEmployment'); ne.onclick = () => newDialog('employment'); bar.append(ne);
+      const nb = el('button', 'os-btn'); nb.append(icon('plus'), t('new'));
+      nb.onclick = e => { e.stopPropagation(); popup(bar, 'os-menu', pop => {
+        for (const [type, label] of [['assignment', t('newAssignment')], ['employment', t('newEmployment')]]) {
+          const b = el('button'); b.append(icon('plus'), label); b.onclick = () => { pop.remove(); newDialog(type); }; pop.append(b); } }); };
+      bar.append(nb);
     }
-    if (PF.data.history) { const h = el('button', 'os-btn'); h.append(icon('clock'), t('history')); h.onclick = e => { e.stopPropagation(); profileHistory(bar); }; bar.append(h); }
     return bar;
   }
+  // A small panel under the bar; a second click on the same button, or a click outside, closes it.
+  function popup(bar, cls, fill) {
+    const was = bar.querySelector('.os-pop'); if (was) { was.remove(); if (was.classList.contains(cls)) return null; }
+    const pop = el('div', 'os-pop ' + cls); pop.addEventListener('click', ev => ev.stopPropagation()); bar.append(pop); fill(pop);
+    setTimeout(() => document.addEventListener('click', function off() { pop.remove(); document.removeEventListener('click', off); }), 0);
+    return pop;
+  }
 
-  // ---- list -----------------------------------------------------------------------------------
+  // ---- overview: the career as a stream, newest first -----------------------------------------
   function matches(e) {
     if (e.removed && !PF.filters.removed) return false;
-    if (PF.filters.kind && (e.type !== 'assignment' || val(e, 'kind') !== PF.filters.kind)) return false;
     if (PF.filters.tech.length && !PF.filters.tech.every(x => list(e, 'tech').includes(x))) return false;
     if (PF.query && !(JSON.stringify(e.meta) + ' ' + e.sections.map(s => s.text).join(' ')).toLowerCase().includes(PF.query)) return false;
     return true;
   }
-  function drawList() {
-    const nav = root.querySelector('.os-list'); if (!nav) return;
-    nav.replaceChildren();
-    const all = entries(), shown = new Set(all.filter(matches).map(e => e.id));
-    const row = (e, cls) => {
-      const b = el('button', 'os-row ' + (cls || '') + (e.id === PF.sel ? ' on' : '') + (e.removed ? ' removed' : '') + (e.error ? ' bad' : ''));
-      const dot = el('span', 'os-dot c-' + (val(e, 'confidence') || 'none')); dot.title = enumLabel('confidence', val(e, 'confidence')) || t('confidenceUnset');
-      const main = el('span', 'os-rt');
-      if (e.type === 'assignment' || e.type === 'employment') main.append(el('b', '', e.type === 'assignment' ? customerOf(e) : val(e, 'employer') || e.id), el('small', '', (e.type === 'assignment' ? val(e, 'role') : val(e, 'title')) + ' · ' + period(e)));
-      else main.append(el('b', '', typeLabel(e.type)));
-      b.append(dot, main);
-      const n = openFlags(e); if (n) { const bd = el('span', 'os-badge', String(n)); bd.title = t('openQuestions', { n }); b.append(bd); }
-      if (e.error) b.append(el('span', 'os-badge bad', '!'));
-      b.onclick = () => select(e.id); nav.append(b);
-    };
-    for (const x of ['person', 'certifications', 'education']) { const e = byId(x); if (e && shown.has(e.id)) row(e, 'single'); }
-    const jobs = all.filter(e => e.type === 'employment' && !e.removed).sort(newestFirst), jobIds = new Set(jobs.map(j => j.id));
-    for (const j of jobs) {
-      const kids = all.filter(e => e.type === 'assignment' && !e.removed && val(e, 'employment') === j.id).sort(newestFirst);
-      if (!shown.has(j.id) && !kids.some(k => shown.has(k.id))) continue;
-      row(j, 'job'); for (const k of kids) if (shown.has(k.id)) row(k, 'kid');
+  function overview(box) {
+    const all = entries(), live = all.filter(e => !e.removed), shown = new Set(all.filter(matches).map(e => e.id));
+    const filtering = !!(PF.query || PF.filters.tech.length), show = e => !filtering || shown.has(e.id);
+    const jobs = live.filter(e => e.type === 'employment').sort(newestFirst), jobIds = new Set(jobs.map(j => j.id));
+    const kidsOf = j => live.filter(e => e.type === 'assignment' && val(e, 'employment') === j.id).sort(newestFirst);
+    const wrap = el('div', 'os-ov'), col = el('div'), side = el('aside', 'os-ov-side');
+    wrap.append(col, side); box.append(wrap);
+    const p = byId('person');
+    if (p) {
+      const hero = el('div', 'os-hero'), name = val(p, 'name') || typeLabel('person'), words = name.split(/\s+/).filter(Boolean);
+      const av = el('div', 'os-av', words.length > 1 ? words[0][0] + words[words.length - 1][0] : name.slice(0, 2)), info = el('div'), h1 = el('h1'), nb = el('button', '', name);
+      nb.onclick = () => select(p.id); h1.append(nb); info.append(h1);
+      const line = el('div', 'os-mut os-icrow');
+      if (val(p, 'title')) line.append(withIcon('briefcase', val(p, 'title')));
+      if (val(p, 'location')) line.append(withIcon('pin', val(p, 'location')));
+      for (const u of [val(p, 'github'), val(p, 'linkedin'), ...list(p, 'links')].filter(Boolean)) {
+        const a = el('a', 'os-ic'); a.append(icon(/github\.com|gitlab\.com/.test(u) ? 'git' : 'globe'), u.replace(/^https?:\/\/(www\.)?/, '')); a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer'; line.append(a); }
+      info.append(line);
+      const about = el('button', 'os-btn'); about.append(icon('user'), t('aboutMe')); about.onclick = () => select(p.id);
+      if (openFlags(p)) about.append(el('span', 'os-badge', String(openFlags(p))));
+      hero.append(av, info, about); col.append(hero);
     }
-    const orphans = all.filter(e => e.type === 'assignment' && !e.removed && !jobIds.has(val(e, 'employment')) && shown.has(e.id)).sort(newestFirst);
-    if (orphans.length) { nav.append(el('div', 'os-grp', t('withoutEmployment'))); orphans.forEach(e => row(e, 'kid')); }
-    const removed = all.filter(e => e.removed && shown.has(e.id));
-    if (removed.length) { nav.append(el('div', 'os-grp', t('removed'))); removed.forEach(e => row(e, 'kid')); }
-    if (!nav.children.length) nav.append(el('div', 'os-empty', t('noMatch')));
+    if (PF.filters.tech.length) {
+      const f = el('div', 'os-filter'); f.append(icon('filter'), t('showingOnly'));
+      for (const x of PF.filters.tech) { const c = el('button', 'os-chip on', x + ' ×'); c.onclick = () => { PF.filters.tech = PF.filters.tech.filter(y => y !== x); render(); }; f.append(c); }
+      col.append(f);
+    }
+    col.append(miniTimeline(jobs, kidsOf, e => !filtering || shown.has(e.id) || kidsOf(e).some(k => shown.has(k.id))));
+    const stream = el('div', 'os-stream');
+    for (const j of jobs) {
+      const kids = kidsOf(j).filter(show);
+      if (filtering && !shown.has(j.id) && !kids.length) continue;
+      stream.append(node(j, (val(j, 'start') || '?').slice(0, 4), dur(j), val(j, 'end') === 'ongoing' ? 'now' : '', [['building', val(j, 'employer')], ['calendar', period(j)], ['pin', val(j, 'location')]],
+        [fold(j, t('aboutJob'), '', '', shown.has(j.id), '', 'info'), ...kids.map(k => fold(k, customerOf(k), val(k, 'role'), period(k), true, '', KIND_ICON[val(k, 'kind')] || 'briefcase'))]));
+    }
+    const orphans = live.filter(e => e.type === 'assignment' && !jobIds.has(val(e, 'employment'))).filter(show).sort(newestFirst);
+    if (orphans.length) stream.append(node(null, '', '', 'plain', [['', t('withoutEmployment')]], orphans.map(k => fold(k, customerOf(k), val(k, 'role'), period(k), true, '', KIND_ICON[val(k, 'kind')] || 'briefcase'))));
+    const other = ['certifications', 'education'].map(byId).filter(e => e && !e.removed && show(e));
+    if (other.length) stream.append(node(null, '', '', 'plain', [['', t('certsEdu')]], other.map(e => fold(e, typeLabel(e.type), '', '', true, '', e.type === 'education' ? 'book' : 'award'))));
+    const removed = all.filter(e => e.removed);
+    if (PF.filters.removed && removed.length) stream.append(node(null, '', '', 'plain', [['', t('removed')]], removed.filter(show).map(e => fold(e, e.type === 'employment' ? val(e, 'employer') : customerOf(e), '', val(e, 'removed'), true, 'removed', 'trash'))));
+    if (!stream.children.length) stream.append(el('div', 'os-empty', t('noMatch')));
+    col.append(stream);
+    if (removed.length) { const r = el('button', 'os-link os-ic'); r.append(icon('trash'), PF.filters.removed ? t('hideRemoved') : t('showRemovedN', { n: removed.length })); r.onclick = () => { PF.filters.removed = !PF.filters.removed; render(); }; col.append(r); }
+    sideColumn(side, live, jobs);
+    if (PF.query) highlightDom(col, PF.query, false);
   }
-  function select(id, toList) {
-    if (!leaveEdit()) return;
-    PF.sel = id; PF.hist = null; if (store) store.setItem(KEY, id);
-    if (toList || PF.view !== 'list') { PF.view = 'list'; render(); return; }
-    drawList(); drawDetail(); const d = root.querySelector('.os-detail'); if (d) d.scrollTop = 0;
+  // One point on the stream: a year on the left, a card on the right. A card with a job opens it on the title.
+  function node(job, year, sub, cls, meta, folds) {
+    const n = el('div', 'os-node ' + cls), y = el('div', 'os-yr', year), card = el('div', 'os-card'), top = el('div', 'os-card-top');
+    if (sub) y.append(el('small', '', sub));
+    if (job) {
+      n.dataset.id = job.id; const h = el('button', 'os-card-title', val(job, 'title') || t('titleQ')); h.onclick = () => select(job.id); top.append(h);
+      const acts = el('div', 'os-acts'); entryButtons(job, acts, false); top.append(acts);
+      const m = el('div', 'os-card-meta os-icrow'); for (const [ic, x] of meta) if (x) m.append(withIcon(ic, x)); card.append(top, m);
+    } else { top.append(el('span', 'os-card-title', meta[0][1])); card.append(top); }
+    for (const f of folds) card.append(f);
+    n.append(y, card); return n;
+  }
+  // An entry that opens in place. The text is built the first time it opens.
+  function fold(e, title, sub, right, hit, cls, ic) {
+    const d = el('details', 'os-fold' + (cls ? ' ' + cls : '')), s = el('summary'), tt = el('span', 'os-fold-t'), r = el('span', 'os-fold-r');
+    d.dataset.id = e.id; if (ic) tt.append(icon(ic)); tt.append(el('b', '', title)); if (sub) tt.append(' ', el('span', 'os-mut', sub));
+    const n = openFlags(e); if (n) { const b = el('span', 'os-badge', String(n)); b.title = t('openQuestions', { n }); r.append(b); }
+    if (e.error) r.append(el('span', 'os-badge bad', '!'));
+    if (right) r.append(right);
+    s.append(tt, r); d.append(s);
+    let filled = false;
+    const fill = () => { if (filled) return; filled = true; const b = el('div', 'os-fold-in'); entryBody(e, b); if (PF.query) highlightDom(b, PF.query, false); d.append(b); };
+    d.open = PF.open.has(e.id) || (!!PF.query && hit && matches(e));
+    if (d.open) fill();
+    d.addEventListener('toggle', () => { if (d.open) { PF.open.add(e.id); fill(); } else PF.open.delete(e.id); });
+    return d;
+  }
+  function entryBody(e, box) {
+    const tech = list(e, 'tech');
+    if (tech.length) { const tl = el('div', 'os-tags'); for (const x of tech) { const b = el('button', 'os-chip', x); b.title = t('visitAll', { t: x }); b.onclick = () => { PF.filters.tech = [x]; render(); }; tl.append(b); } box.append(tl); }
+    if (e.error) box.append(el('pre', 'os-err', t('unreadable', { e: e.error })));
+    for (const s of sectionEls(e)) box.append(s);
+    const acts = el('div', 'os-acts'), open = el('button', 'os-btn'); open.append(icon('open'), t('open')); open.onclick = () => select(e.id); acts.append(open);
+    entryButtons(e, acts, true); box.append(acts);
+  }
+  // Edit, history and ask, for an entry shown in the overview. They open it on its own page.
+  function entryButtons(e, acts, all) {
+    const ro = PF.data.readonly || PF.asof || e.removed;
+    const btn = (ic, label, fn) => { const b = el('button', 'os-btn'); b.append(icon(ic), label); b.onclick = ev => { ev.stopPropagation(); fn(); }; acts.append(b); };
+    if (!ro) btn('note', t('edit'), () => { if (!select(e.id)) return; PF.edit = { id: e.id }; PF.dirty = false; drawDetail(); });
+    if (all && PF.data.history && !PF.asof) btn('clock', t('history'), () => { if (select(e.id)) entryHistory(byId(e.id)); });
+    if (all && !ro && host.request) btn('chat', t('ask'), () => request(e.id));
+  }
+  // Shared by both timelines: year bands, career gaps, the now marker and a hover card.
+  function timeFrame(items) {
+    const y0 = Math.floor(Math.min(...items.map(e => ym(val(e, 'start')))) / 12), y1 = Math.floor(Math.max(nowYm(), ...items.map(endYm)) / 12), span = (y1 - y0 + 1) * 12;
+    return { y0, y1, span, at: mo => (mo - y0 * 12) / span * 100, w: (a, b) => (b - a + 1) / span * 100 };
+  }
+  function backdrop(f) {
+    const bg = el('div', 'os-tlbg');
+    for (let y = f.y0; y <= f.y1; y++) if ((y - f.y0) % 2) { const b = el('i', 'os-tlband'); b.style.left = f.at(y * 12) + '%'; b.style.width = f.w(y * 12, y * 12 + 11) + '%'; bg.append(b); }
+    for (const g of PF.data.issues.filter(i => i.id === 'employments')) {
+      const m = /(\d{4}-\d{2}) to (\d{4}-\d{2}) \((\d+)/.exec(g.message); if (!m) continue;
+      const gp = el('i', 'os-tlgap'); gp.style.left = f.at(ym(m[1])) + '%'; gp.style.width = f.w(ym(m[1]), ym(m[2])) + '%'; gp.title = issueText(g.message);
+      gp.append(el('span', '', m[3] + ' ' + t('months'))); bg.append(gp);
+    }
+    const now = el('i', 'os-tlnow'); now.style.left = f.at(nowYm() + 1) + '%'; now.append(el('span', '', t('nowWord'))); bg.append(now);
+    return bg;
+  }
+  function hoverCard(box) {
+    const tip = el('div', 'os-tltip'); box.append(tip);
+    return (bar, e) => {
+      bar.removeAttribute('title');
+      bar.addEventListener('mouseenter', () => {
+        tip.replaceChildren(el('b', '', e.type === 'assignment' ? customerOf(e) : val(e, 'employer')),
+          el('div', '', e.type === 'assignment' ? val(e, 'role') : val(e, 'title')), el('small', '', period(e) + (dur(e) ? ' · ' + dur(e) : '')));
+        if (openFlags(e)) tip.append(el('span', 'os-badge', t('openQuestions', { n: openFlags(e) })));
+        tip.classList.add('on'); });
+      bar.addEventListener('mousemove', ev => { const r = box.getBoundingClientRect(), x = ev.clientX - r.left;
+        tip.style.left = Math.min(x + 14, r.width - tip.offsetWidth - 4) + 'px'; tip.style.top = (ev.clientY - r.top + 16) + 'px'; });
+      bar.addEventListener('mouseleave', () => tip.classList.remove('on'));
+    };
+  }
+  function miniTimeline(jobs, kidsOf, lit) {
+    const box = el('div', 'os-mtl' + (PF.grown ? '' : ' grow')), dated = jobs.filter(j => ym(val(j, 'start')) != null);
+    if (!dated.length) return el('div');
+    PF.grown = true;
+    const f = timeFrame(dated.flatMap(j => [j, ...kidsOf(j)]).filter(e => ym(val(e, 'start')) != null)), card = hoverCard(box);
+    const legend = el('div', 'os-mtl-legend');
+    for (const [cls, label] of [['job', t('employment')], ['k-client', enumLabel('kind', 'client')], ['k-internal', enumLabel('kind', 'internal')], ['k-portfolio', enumLabel('kind', 'portfolio')]]) {
+      const s = el('span'); s.append(el('i', cls), label); legend.append(s); }
+    const axis = el('div', 'os-mtl-axis'); for (let y = f.y0; y <= f.y1; y++) { const s = el('span', '', String(y)); s.style.left = f.at(y * 12) + '%'; s.style.width = f.w(0, 11) + '%'; axis.append(s); }
+    const lanes = el('div', 'os-mtl-lanes'); lanes.append(backdrop(f));
+    const bar = (e, cls, top, n) => { const a = ym(val(e, 'start')), b = endYm(e), d = el('button', 'os-mtl-bar ' + cls + (val(e, 'end') === 'ongoing' ? ' ongoing' : ''));
+      d.style.left = f.at(a) + '%'; d.style.width = f.w(a, b) + '%'; if (top != null) d.style.top = top + 'px'; d.style.animationDelay = n * 40 + 'ms';
+      card(d, e); d.onclick = () => reveal(e.id, false); return d; };
+    let n = 0;
+    for (const j of dated) {
+      const lane = el('div', 'os-mtl-lane'), jb = bar(j, 'job' + (lit(j) ? '' : ' dim'), null, n++), name = val(j, 'employer'), a = ym(val(j, 'start')), b = endYm(j);
+      // The name goes inside the bar when it fits, otherwise beside it, on the side with room.
+      if (f.w(a, b) > name.length * 1.1 + 4) jb.append(el('span', '', name));
+      else { const lab = el('span', 'os-mtl-lab', name); if (f.at(b + 1) > 70) lab.style.right = 'calc(' + (100 - f.at(a)) + '% + 6px)'; else lab.style.left = 'calc(' + f.at(b + 1) + '% + 6px)'; lane.append(lab); }
+      lane.append(jb);
+      const rows = [];
+      for (const k of kidsOf(j).filter(k => ym(val(k, 'start')) != null).sort((p, q) => ym(val(p, 'start')) - ym(val(q, 'start')))) {
+        let r = rows.findIndex(end => end < ym(val(k, 'start'))); if (r < 0) { r = rows.length; rows.push(0); } rows[r] = endYm(k);
+        lane.append(bar(k, 'kid k-' + (val(k, 'kind') || 'client') + (lit(k) ? '' : ' dim'), 24 + r * 8, n++));
+      }
+      lane.style.height = (rows.length ? 28 + rows.length * 8 : 26) + 'px'; lanes.append(lane);
+    }
+    box.append(legend, axis, lanes); return box;
+  }
+  function sideColumn(side, live, jobs) {
+    const months = new Set(); for (const j of jobs) { const a = ym(val(j, 'start')), b = endYm(j); if (a != null && b != null) for (let m = a; m <= b; m++) months.add(m); }
+    const certs = byId('certifications'), rows = certs ? ((certs.sections.find(s => s.id === '_intro') || {}).text || '').split('\n').filter(l => /^\s*\|/.test(l)).length - 2 : 0;
+    const stats = el('div', 'os-stats');
+    for (const [n, label, ic] of [[(months.size / 12).toFixed(1), t('yearsWorked'), 'calendar'], [live.filter(e => e.type === 'assignment').length, t('assignmentsN'), 'briefcase'], [Math.max(rows, 0), t('certsN'), 'award']]) {
+      const d = el('div'); d.append(icon(ic), el('b', '', String(n)), el('span', '', label)); stats.append(d); }
+    const sb = el('div', 'os-box'); sb.append(stats); side.append(sb);
+    const top = [...PF.data.tech].sort((a, b) => b.months - a.months).slice(0, 12);
+    if (top.length) {
+      const tb = el('div', 'os-box'), h = el('h3'), all = el('button', 'os-link', t('allN', { n: PF.data.tech.length }));
+      h.append(icon('chart'), t('topTech')); all.onclick = () => { PF.view = 'tech'; render(); }; h.append(all); tb.append(h);
+      for (const x of top) {
+        const r = el('button', 'os-tb' + (PF.filters.tech.includes(x.name) ? ' on' : '')), bar = el('i', x.ongoing ? 'ongoing' : '');
+        bar.style.width = x.months / top[0].months * 100 + '%'; r.title = t('techTip');
+        r.append(el('span', '', x.name), el('span', '', ''), el('span', '', (x.months / 12).toFixed(1) + ' ' + t('years'))); r.children[1].append(bar);
+        r.onclick = () => { PF.filters.tech = PF.filters.tech.includes(x.name) ? [] : [x.name]; render(); }; tb.append(r);
+      }
+      side.append(tb);
+    }
+    const qs = live.flatMap(e => e.flags.filter(f => f.open).map(f => [e, f]));
+    const qb = el('div', 'os-box'), h = el('h3'); h.append(icon('help'), t('openQ'));
+    if (qs.length) h.append(el('span', 'os-badge', String(qs.length)));
+    const go = el('button', 'os-link', t('answerAll')); go.onclick = () => { PF.view = 'questions'; render(); }; h.append(go); qb.append(h);
+    for (const [e, f] of qs.slice(0, 6)) {
+      const b = el('button', 'os-qi'), tx = el('span'); tx.innerHTML = sanitize(marked.parseInline(f.text));
+      b.append(el('small', '', e.type === 'assignment' ? customerOf(e) : e.type === 'employment' ? val(e, 'employer') : typeLabel(e.type)), tx);
+      b.onclick = () => reveal(e.id, false); qb.append(b);
+    }
+    if (!qs.length) qb.append(el('div', 'os-mut', t('noOpenQ')));
+    side.append(qb);
+  }
+  // Scroll the overview to an entry and open it; what is not on the stream opens on its own page.
+  function reveal(id, quiet) {
+    const e = byId(id); if (!e) return;
+    const q = x => root.querySelector(x + '[data-id="' + CSS.escape(x === '.os-node' && e.type === 'assignment' ? val(e, 'employment') : id) + '"]');
+    const d = e.type === 'employment' ? null : q('.os-fold'), n = d ? d.closest('.os-node') : q('.os-node');
+    if (!d && !n) { if (!quiet) select(id); return; }
+    if (d) d.open = true;
+    (d || n).scrollIntoView({ behavior: quiet ? 'auto' : 'smooth', block: d ? 'center' : 'start' });
+    const c = n.querySelector('.os-card'); c.classList.add('flash'); setTimeout(() => c.classList.remove('flash'), 1200);
+  }
+  function select(id) {
+    if (!leaveEdit()) return false;
+    PF.sel = id; PF.hist = null; PF.view = 'entry'; if (store) store.setItem(KEY, id);
+    render(); return true;
   }
   function leaveEdit() {
     if (!PF.dirty) { PF.edit = null; return true; }
@@ -291,6 +474,10 @@ function OpenSelfUI(root, host) {
   window.addEventListener('beforeunload', e => { if (PF.dirty) { e.preventDefault(); e.returnValue = ''; } });
 
   // ---- detail ---------------------------------------------------------------------------------
+  // Icons for the facts on an entry's page, by their label.
+  const FACT_ICON = new Proxy({}, { get: (_, k) => ({ period: 'calendar', employer: 'building', customer: 'briefcase', nameable: 'user', sector: 'layers', allocation: 'chart',
+    team: 'user', kind: 'tag', location: 'pin', empType: 'briefcase', breaks: 'clock', title: 'briefcase', languages: 'globe', clearance: 'info', confidence: 'info',
+    reviewed: 'calendar', sources: 'book', LinkedIn: 'globe', GitHub: 'git' })[Object.keys(UI.en).find(x => t(x) === k) || k] });
   function drawDetail() {
     const box = root.querySelector('.os-detail'); if (!box) return;
     const e = byId(PF.sel); box.replaceChildren();
@@ -300,11 +487,11 @@ function OpenSelfUI(root, host) {
     const head = el('div', 'os-head');
     head.append(el('div', 'os-type', typeLabel(e.type) + (e.removed ? ' · ' + t('removed').toLowerCase() + ' ' + val(e, 'removed') : '') + ' · ' + e.id),
       el('h2', '', e.type === 'person' ? (val(e, 'name') || typeLabel('person')) : titleOf(e)));
-    const facts = el('div', 'os-facts'), fact = (k, v) => { if (v === '' || v == null) return; const s = el('span', 'os-fact'); s.append(el('small', '', k), el('span', '', v)); facts.append(s); };
+    const facts = el('div', 'os-facts'), fact = (k, v) => { if (v === '' || v == null) return; const s = el('span', 'os-fact'); s.append(withIcon(FACT_ICON[k] || 'info', k, 'os-fl'), el('span', '', v)); facts.append(s); };
     if (e.type === 'assignment') {
       fact(t('period'), period(e) + (dur(e) ? ' (' + dur(e) + ')' : ''));
       const emp = byId(val(e, 'employment'));
-      if (emp) { const s = el('span', 'os-fact'); const a = el('a', '', val(emp, 'employer') + ', ' + val(emp, 'title')); a.href = '#'; a.onclick = ev => { ev.preventDefault(); select(emp.id); }; s.append(el('small', '', t('employer')), a); facts.append(s); }
+      if (emp) { const s = el('span', 'os-fact'); const a = el('a', '', val(emp, 'employer') + ', ' + val(emp, 'title')); a.href = '#'; a.onclick = ev => { ev.preventDefault(); select(emp.id); }; s.append(withIcon('building', t('employer'), 'os-fl'), a); facts.append(s); }
       fact(t('customer'), val(e, 'kind') === 'portfolio' ? list(e, 'customers').join(', ') : val(e, 'customer'));
       fact(t('nameable'), enumLabel('customer_public', val(e, 'customer_public')) + (val(e, 'customer_public') !== 'public' && val(e, 'customer_alias') ? ': «' + val(e, 'customer_alias') + '»' : ''));
       fact(t('sector'), val(e, 'sector')); fact(t('allocation'), val(e, 'allocation') ? val(e, 'allocation') + ' %' : ''); fact(t('team'), val(e, 'team_size'));
@@ -320,7 +507,7 @@ function OpenSelfUI(root, host) {
     fact(t('confidence'), enumLabel('confidence', val(e, 'confidence'))); fact(t('reviewed'), val(e, 'last_reviewed')); fact(t('sources'), list(e, 'sources').join(', '));
     head.append(facts);
     const tech = list(e, 'tech');
-    if (tech.length) { const tl = el('div', 'os-tags'); for (const x of tech) { const b = el('button', 'os-chip', x); b.title = t('visitAll', { t: x }); b.onclick = () => { PF.filters.tech = [x]; render(); }; tl.append(b); } head.append(tl); }
+    if (tech.length) { const tl = el('div', 'os-tags'); for (const x of tech) { const b = el('button', 'os-chip', x); b.title = t('visitAll', { t: x }); b.onclick = () => { PF.filters.tech = [x]; PF.view = 'overview'; render(); }; tl.append(b); } head.append(tl); }
     const acts = el('div', 'os-acts'), ro = PF.data.readonly || PF.asof || e.removed;
     const btn = (ic, label, fn) => { const b = el('button', 'os-btn'); b.append(icon(ic), label); b.onclick = fn; acts.append(b); };
     if (!ro) btn('note', t('edit'), () => { PF.edit = { id: e.id }; PF.dirty = false; drawDetail(); });
@@ -333,15 +520,7 @@ function OpenSelfUI(root, host) {
     const iss = issuesOf(e.id).filter(i => !/^(question|conflict):/.test(i.message));
     if (iss.length) { const ul = el('ul', 'os-issues'); for (const i of iss) ul.append(el('li', 'lv-' + i.level, (i.field ? fieldLabel(i.field) + ': ' : '') + issueText(i.message))); box.append(ul); }
     if (PF.hist && PF.hist.id === e.id) box.append(PF.hist.el);
-    const sch = PF.data.schema[e.type] || { sections: [] };
-    const rank = s => s.id === '_intro' ? -1 : (sch.sections.indexOf(s.id) < 0 ? 99 : sch.sections.indexOf(s.id));
-    for (const s of [...e.sections].sort((a, b) => rank(a) - rank(b))) {
-      if (!s.text.trim()) continue;
-      const sec = el('div', 'os-sec'); sec.dataset.entry = e.id; sec.dataset.section = s.id; sec.dataset.file = e.file;
-      if (s.id !== '_intro') sec.append(el('h3', '', s.known ? sectionLabel(e.type, s.id) : s.heading));
-      sec.append(s.id === 'flags' ? flagsView(e, s.text) : renderMd(s.text));
-      box.append(sec);
-    }
+    for (const s of sectionEls(e)) box.append(s);
     if (e.type === 'employment') {
       const kids = entries().filter(x => x.type === 'assignment' && !x.removed && val(x, 'employment') === e.id).sort(newestFirst);
       if (kids.length) { const sec = el('div', 'os-sec'); sec.append(el('h3', '', t('inEmployment')));
@@ -350,6 +529,16 @@ function OpenSelfUI(root, host) {
     }
     if (!e.sections.some(s => s.text.trim()) && !e.error) box.append(el('div', 'os-empty', t('noText')));
     highlightDom(box, PF.query, false);
+  }
+  function sectionEls(e) {
+    const sch = PF.data.schema[e.type] || { sections: [] };
+    const rank = s => s.id === '_intro' ? -1 : (sch.sections.indexOf(s.id) < 0 ? 99 : sch.sections.indexOf(s.id));
+    return [...e.sections].sort((a, b) => rank(a) - rank(b)).filter(s => s.text.trim()).map(s => {
+      const sec = el('div', 'os-sec'); sec.dataset.entry = e.id; sec.dataset.section = s.id; sec.dataset.file = e.file;
+      if (s.id !== '_intro') sec.append(el('h3', '', s.known ? sectionLabel(e.type, s.id) : s.heading));
+      sec.append(s.id === 'flags' ? flagsView(e, s.text) : renderMd(s.text));
+      return sec;
+    });
   }
   function flagsView(e, text) {
     const wrap = el('div', 'os-flags');
@@ -526,7 +715,7 @@ function OpenSelfUI(root, host) {
       const j = await post('new', { type, fields, sections: secs }); saveB.disabled = false;
       if (!j.ok) { msg.textContent = j.message || t('couldNot'); return; }
       if (alsoAsk) await host.request(j.id, askTa.value.trim());
-      d.close(); PF.sel = j.id; PF.view = 'list'; await load(); toast(alsoAsk ? t('savedAsk') : t('saved'));
+      d.close(); PF.sel = j.id; PF.view = 'entry'; await load(); toast(alsoAsk ? t('savedAsk') : t('saved'));
     };
     saveB.onclick = () => submit(false); if (interview) interview.onclick = () => submit(true);
     d.showModal(); (inputs.customer || inputs.employer).focus();
@@ -575,16 +764,14 @@ function OpenSelfUI(root, host) {
     box.append(out);
   }
   async function profileHistory(bar) {
-    let pop = root.querySelector('.os-pop'); if (pop) { pop.remove(); return; }
-    pop = el('div', 'os-pop'); bar.append(pop);
+    const pop = popup(bar, 'os-hpop', () => {}); if (!pop) return;
     const dRow = el('div', 'os-asof'), di = el('input'); di.type = 'date'; di.value = new Date().toISOString().slice(0, 10);
     const go = el('button', 'os-btn', t('showAsOf'));
     go.onclick = async () => { const j = await host.get('asof', { date: di.value }); if (!j.ok) { toast(j.message || t('noVersion')); return; }
-      if (!leaveEdit()) return; PF.asof = { date: di.value, rev: j.rev, entries: j.entries }; pop.remove(); PF.view = 'list'; render(); };
+      if (!leaveEdit()) return; PF.asof = { date: di.value, rev: j.rev, entries: j.entries }; pop.remove(); PF.view = 'overview'; render(); };
     dRow.append(di, go); pop.append(dRow);
     const j = await host.get('log');
     for (const it of (j.items || []).slice(0, 80)) pop.append(revRow(it));
-    setTimeout(() => document.addEventListener('click', function off(ev) { if (!ev.target.closest('.os-pop')) { pop.remove(); document.removeEventListener('click', off); } }), 0);
   }
   function diffView(a, b) { const box = el('div', 'os-diff'); for (const [op, x] of wordDiff(a, b)) box.append(op === '=' ? document.createTextNode(x) : el(op === '+' ? 'ins' : 'del', '', x)); return box; }
   function wordDiff(a, b) {
@@ -604,12 +791,10 @@ function OpenSelfUI(root, host) {
   function timeline(box) {
     const all = entries().filter(e => !e.removed && (e.type === 'employment' || e.type === 'assignment') && ym(val(e, 'start')) != null);
     if (!all.length) { box.append(el('div', 'os-empty', t('noDates'))); return; }
-    const lo = Math.min(...all.map(e => ym(val(e, 'start')))), hi = Math.max(nowYm(), ...all.map(endYm));
-    const y0 = Math.floor(lo / 12), y1 = Math.floor(hi / 12), span = (y1 - y0 + 1) * 12;
-    const pct = mo => ((mo - y0 * 12) / span * 100) + '%', wid = (a, b) => ((b - a + 1) / span * 100) + '%';
-    const tl = el('div', 'os-tl'), axis = el('div', 'os-tl-axis');
-    for (let y = y0; y <= y1; y++) { const s = el('span', '', String(y)); s.style.left = pct(y * 12); axis.append(s); }
-    tl.append(axis);
+    const f = timeFrame(all), pct = mo => f.at(mo) + '%', wid = (a, b) => f.w(a, b) + '%';
+    const tl = el('div', 'os-tl'), axis = el('div', 'os-tl-axis'), rows = el('div', 'os-tl-rows'), card = hoverCard(tl);
+    for (let y = f.y0; y <= f.y1; y++) { const s = el('span', '', String(y)); s.style.left = pct(y * 12); s.style.width = wid(0, 11); axis.append(s); }
+    tl.append(axis); rows.append(backdrop(f));
     for (const g of PF.data.issues.filter(i => i.id === 'employments')) {
       const r = el('div', 'os-gapnote'); r.append(icon('help'), el('span', '', issueText(g.message).replace(/^./, c => c.toUpperCase())));
       if (host.request) { const b = el('button', 'os-btn ghost', t('gap')); b.onclick = () => request('', g.message); r.append(b); }
@@ -617,11 +802,11 @@ function OpenSelfUI(root, host) {
     }
     const bar = (e, cls) => {
       const a = ym(val(e, 'start')), b = endYm(e), d = el('button', 'os-tl-bar ' + cls + (val(e, 'end') === 'ongoing' ? ' ongoing' : ''));
-      d.style.left = pct(a); d.style.width = wid(a, b); d.title = titleOf(e) + '\n' + period(e) + (val(e, 'allocation') ? ' · ' + val(e, 'allocation') + ' %' : '');
+      d.style.left = pct(a); d.style.width = wid(a, b);
       d.append(el('span', '', e.type === 'assignment' ? customerOf(e) : val(e, 'employer') + ', ' + val(e, 'title')));
       for (const br of list(e, 'breaks')) { const [p, q] = br.split('/'), bx = ym(p), by = ym(q); if (bx == null || by == null) continue;
         const h = el('i', 'os-tl-break'); h.style.left = ((bx - a) / (b - a + 1) * 100) + '%'; h.style.width = ((by - bx + 1) / (b - a + 1) * 100) + '%'; h.title = br; d.append(h); }
-      d.onclick = () => select(e.id, true); return d;
+      card(d, e); d.onclick = () => select(e.id); return d;
     };
     for (const j of all.filter(e => e.type === 'employment').sort(newestFirst)) {
       const row = el('div', 'os-tl-row'); row.append(bar(j, 'job'));
@@ -630,15 +815,15 @@ function OpenSelfUI(root, host) {
         let li = lanes.findIndex(end => end < ym(val(k, 'start'))); if (li < 0) { lanes.push(0); li = lanes.length - 1; } lanes[li] = endYm(k);
         const b = bar(k, 'kid k-' + (val(k, 'kind') || 'client')); b.style.top = (26 + li * 22) + 'px'; row.append(b);
       }
-      row.style.height = (30 + lanes.length * 22) + 'px'; tl.append(row);
+      row.style.height = (30 + lanes.length * 22) + 'px'; rows.append(row);
     }
-    box.append(tl, el('div', 'os-lead', t('tlLead')));
+    tl.append(rows); box.append(tl, el('div', 'os-lead', t('tlLead')));
   }
   function techView(box) {
     const tb = el('table', 'os-table'), hr = el('tr'); for (const h of t('techHead')) hr.append(el('th', '', h)); tb.append(hr);
     for (const r of PF.data.tech) {
-      const tr = el('tr'), name = el('td'), b = el('button', 'os-chip', r.name); b.onclick = () => { PF.filters.tech = [r.name]; PF.view = 'list'; render(); }; name.append(b);
-      const ids = el('td'); for (const id of r.ids) { const e = byId(id), a = el('button', 'os-link inline', e ? customerOf(e) + ' (' + (val(e, 'start') || '?').slice(0, 4) + ')' : id); a.onclick = () => select(id, true); ids.append(a); }
+      const tr = el('tr'), name = el('td'), b = el('button', 'os-chip', r.name); b.onclick = () => { PF.filters.tech = [r.name]; PF.view = 'overview'; render(); }; name.append(b);
+      const ids = el('td'); for (const id of r.ids) { const e = byId(id), a = el('button', 'os-link inline', e ? customerOf(e) + ' (' + (val(e, 'start') || '?').slice(0, 4) + ')' : id); a.onclick = () => select(id); ids.append(a); }
       tr.append(name, el('td', '', r.months + (r.ongoing ? '+' : '')), ids); tb.append(tr);
     }
     const unknown = new Set(); for (const e of entries()) for (const x of list(e, 'tech')) if (!PF.data.tech_names.includes(x)) unknown.add(x);
@@ -654,7 +839,7 @@ function OpenSelfUI(root, host) {
     for (const [id, items] of [...groups.entries()].sort((a, b) => order(a[0]) - order(b[0]))) {
       const e = byId(id), card = el('div', 'os-qcard'), head = el('div', 'os-qhead');
       head.append(el('b', '', e ? titleOf(e) : id === 'employments' ? t('careerGap') : id));
-      if (e) { const o = el('button', 'os-btn ghost', t('open')); o.onclick = () => select(e.id, true); head.append(o);
+      if (e) { const o = el('button', 'os-btn ghost'); o.append(icon('open'), t('open')); o.onclick = () => select(e.id); head.append(o);
         if (!PF.data.readonly && host.request) { const a = el('button', 'os-btn ghost', t('ask')); a.onclick = () => request(e.id, items.map(i => i.message).join('; ')); head.append(a); } }
       card.append(head);
       for (const i of items) {
@@ -670,12 +855,12 @@ function OpenSelfUI(root, host) {
   function search(needle, jump) {
     if (!PF.data) return;
     PF.query = (needle || '').trim().toLowerCase();
-    if (PF.view !== 'list') { PF.view = 'list'; render(); } else drawList();
-    const d = root.querySelector('.os-detail'); if (d && !PF.edit) highlightDom(d, PF.query, jump);
+    if (PF.view === 'entry') { const d = root.querySelector('.os-detail'); if (d && !PF.edit) highlightDom(d, PF.query, jump); }
+    else { PF.view = 'overview'; render(); if (jump) root.querySelector('mark.os-hit')?.scrollIntoView({ block: 'center' }); }
     if (host.hits) host.hits(PF.query ? t('entries', { n: entries().filter(matches).length }) : '');
   }
   const onKey = e => { if ((e.metaKey || e.ctrlKey) && e.key === 's' && PF.edit && PF.edit.save && root.isConnected) { e.preventDefault(); PF.edit.save(); } };
   document.addEventListener('keydown', onKey);
 
-  return { tick, search, reload: load, dirty: () => PF.dirty, destroy: () => document.removeEventListener('keydown', onKey) };
+  return { tick, search, reload: load, dirty: () => PF.dirty, destroy: () => { document.removeEventListener('keydown', onKey); if (host.nav) host.nav.replaceChildren(); } };
 }
