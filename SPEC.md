@@ -250,6 +250,14 @@ bytes up to a multiple of 65536. Readers decrypt, check the first line, take the
 clone or fast-forward from it. They never merge silently: if the profile changed in two places,
 the user merges with git.
 
+A tool that writes to a home must never let it publish plaintext. `openself guard` checks the
+index before a commit and every outgoing commit before a push, and refuses anything under
+`profile/`, any file outside an allow list (the files above, the tools next to them, and globs in
+`.openself/allow`), a `profile.age` without the age header or with readable profile data in it,
+and anything but public keys in the recipients file. It runs as git pre-commit and pre-push hooks,
+which `openself` installs on every push and pull, and again before each upload. Encrypting needs
+only the public keys, so a tool (or an AI) can push without ever holding the secret key.
+
 ## 8. Privacy
 
 A profile holds personal data and often confidential customer details. It lives on the owner's

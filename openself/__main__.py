@@ -16,7 +16,10 @@
 
   serve [DIR] [--port 8765] [--no-browser]        the web app for a profile
   home [DIR]                                      make DIR a home: .openself/, profile/, .gitignore
-  keys [HOME]                                     make this machine's key and add it to HOME's recipients
+  keys [HOME] [--bitwarden]                       make this machine's key and add it to HOME's recipients;
+                                                  --bitwarden moves the key into Bitwarden instead
+  guard [HOME] [--hook pre-commit|pre-push]       refuse if the home repository would publish anything
+                                                  unencrypted (also run by git hooks, push and pull)
   push [HOME]                                     encrypt profile/ into profile.age, commit and push
   pull [HOME]                                     fetch profile.age, decrypt it into profile/
 
@@ -28,7 +31,7 @@ import sys
 
 import os
 
-from . import history, importer, index, lint, model, sync, write
+from . import guard, history, importer, index, lint, model, sync, write
 
 
 def main(argv=None):
@@ -54,20 +57,44 @@ def main(argv=None):
     p = sub.add_parser("import"); p.add_argument("dir"); p.add_argument("urls", nargs="*"); p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("serve"); p.add_argument("dir", nargs="?"); p.add_argument("--port", type=int, default=8765)
     p.add_argument("--no-browser", action="store_true")
-    for name in ("home", "keys", "push", "pull"):
+    for name in ("home", "push", "pull"):
         sub.add_parser(name).add_argument("dir", nargs="?")
+    p = sub.add_parser("keys"); p.add_argument("dir", nargs="?"); p.add_argument("--bitwarden", action="store_true")
+    p = sub.add_parser("guard"); p.add_argument("dir", nargs="?"); p.add_argument("--hook", choices=["pre-commit", "pre-push"])
     a = ap.parse_args(argv)
 
+    if a.cmd == "guard":
+        home = sync.find_home(a.dir or ".") or os.path.abspath(a.dir or ".")
+        bad = guard.check(home, a.hook, sys.stdin.read() if a.hook == "pre-push" else "")
+        if bad:
+            print("openself guard: refusing, this would publish something unencrypted or unexpected:", file=sys.stderr)
+            for b in bad:
+                print("  " + b, file=sys.stderr)
+            return 1
+        if not a.hook:
+            print("ok: only the encrypted profile and its tools")
+        return 0
     if a.cmd in ("serve", "keys", "push", "pull"):
         home = sync.find_home(a.dir or ".")
         try:
             if a.cmd == "serve":
                 from .web.server import serve
+                if home and (sync.identity_command() or "").split()[:1] == ["bw"] and sys.stdin.isatty():
+                    print("Unlocking Bitwarden so the app can pull (the session stays in this process).")
+                    sync.bw_session()
                 root = a.dir or (sync.profile_dir(home) if home else ".")
                 serve(root, a.port, not a.no_browser, home if home and os.path.abspath(root) == sync.profile_dir(home) else None)
             elif not home:
                 print("not in an OpenSelf home folder; run `openself home` first", file=sys.stderr)
                 return 1
+            elif a.cmd == "keys" and a.bitwarden:
+                pub, where, created = sync.to_bitwarden(home)
+                print(("saved the key in Bitwarden as" if created else "Bitwarden already has the key in")
+                      + f" «{sync.BW_ITEM}» (checked: it opens profile.age for {pub[:16]}...)")
+                print(f"openself now reads it with: bw get notes \"{sync.BW_ITEM}\" (~/.config/openself/identity-command)")
+                if where and "Keychain" in where and sys.stdin.isatty():
+                    if input("Remove the copy in the macOS Keychain, so Bitwarden is the only one? [y/N] ").strip().lower() == "y":
+                        print("removed from the Keychain" if sync.remove_keychain_copy() else "nothing removed")
             elif a.cmd == "keys":
                 pub, where, created = sync.keys_init(home)
                 print(("created" if created else "found") + f" the key in {where}\npublic key added to {sync.recipients_file(home)}:\n{pub}")
@@ -88,6 +115,7 @@ def main(argv=None):
         return 0
     if a.cmd == "home":
         print(make_home(a.dir or "."))
+        guard.install(os.path.abspath(a.dir or "."))
         return 0
 
     if a.cmd == "init":
