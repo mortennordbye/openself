@@ -35,6 +35,9 @@ button.os-rev { cursor: pointer; } button.os-rev:hover { background: var(--os-ho
 .os-imp-src { border: 1px solid var(--os-line); border-radius: 10px; padding: 10px 12px; margin: 8px 0; background: var(--os-card); }
 .os-imp-src ul { margin: 2px 0 6px; padding-left: 20px; font-size: 12.5px; } .os-imp-h { margin-top: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
 .os-imp-h.add { color: var(--os-ok); } .os-imp-h.upd { color: var(--os-acc); } .os-imp-h.bad { color: var(--os-warn-fg); }
+.os-issw { display: flex; align-items: flex-start; gap: 7px; min-width: 0; } .os-issw > span:last-child { padding-top: 1px; }
+.os-iss { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 3px; box-sizing: border-box; border-radius: 5px;
+  color: #fff; font: 700 9px/1 var(--font, -apple-system, system-ui, sans-serif); letter-spacing: .02em; flex: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
 .os-srcs { display: flex; flex-wrap: wrap; gap: 4px; }
 .os-src { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 5px; border-radius: 99px; font-size: 11.5px; line-height: 18px; white-space: nowrap;
   background: var(--os-chip); color: var(--os-fg); text-decoration: none; border: 1px solid transparent; }

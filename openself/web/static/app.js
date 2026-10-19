@@ -617,7 +617,7 @@ function OpenSelfUI(root, host) {
       const sec = el('div', 'os-sec'); sec.dataset.entry = e.id; sec.dataset.section = s.id; sec.dataset.file = e.file;
       if (s.id !== '_intro') sec.append(el('h3', '', s.known ? sectionLabel(e.type, s.id) : s.heading));
       sec.append(s.id === 'flags' ? flagsView(e, s.text) : renderMd(s.text));
-      if (s.id === '_intro' && sch.table) sourceChips(sec, e, sch.table.indexOf('source'));
+      if (s.id === '_intro' && sch.table) { sourceChips(sec, e, sch.table.indexOf('source')); issuerBadges(sec, sch.table.indexOf('issuer')); }
       return sec;
     });
   }
@@ -640,6 +640,25 @@ function OpenSelfUI(root, host) {
         chip.title = p; box.append(chip);
       }
       td.replaceChildren(box);
+    }
+  }
+  // A small monogram before each issuer: known ones get their colour, others initials and a colour from the name.
+  const ISSUERS = [[/microsoft/i, 'MS', '#0078d4'], [/github/i, 'GH', '#6e40c9'], [/anthropic/i, 'A', '#d97757'], [/linux foundation/i, 'LF', '#0a4d8c'],
+    [/amazon|aws/i, 'AWS', '#ff9900'], [/google/i, 'G', '#4285f4'], [/hashicorp/i, 'HC', '#7b42bc'], [/cncf|cloud native/i, 'CN', '#0086ff'],
+    [/red hat/i, 'RH', '#ee0000'], [/cisco/i, 'C', '#049fd9'], [/oracle/i, 'O', '#c74634'], [/sjøforsvaret|forsvaret/i, 'F', '#4b5b3c']];
+  function issuerMark(name) {
+    const hit = ISSUERS.find(([re]) => re.test(name));
+    if (hit) return [hit[1], hit[2]];
+    const words = name.replace(/\(.*?\)/g, '').split(/[\s/&-]+/).filter(w => w && !/^(the|and|of|for|og|av|for)$/i.test(w));
+    let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
+    return [(words.length > 1 ? words.slice(0, 2).map(w => w[0]).join('') : (words[0] || '?').slice(0, 2)).toUpperCase(), `hsl(${h} 45% 45%)`];
+  }
+  function issuerBadges(sec, col) {
+    if (col < 0) return;
+    for (const td of sec.querySelectorAll('tbody tr td:nth-child(' + (col + 1) + ')')) {
+      const name = td.textContent.trim(); if (!name) continue;
+      const [mono, color] = issuerMark(name), b = el('span', 'os-iss', mono), w = el('span', 'os-issw');
+      b.style.background = color; b.title = name; w.append(b, el('span', '', name)); td.replaceChildren(w);
     }
   }
   function flagsView(e, text) {
