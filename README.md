@@ -42,7 +42,9 @@ imports certifications from a public Credly profile or Microsoft Learn transcrip
 Transcript → Share link) into `certifications.md`: new rows are added, empty cells filled, and a
 date that disagrees becomes a conflict for you to resolve. The links are kept, so next time
 `openself import path/to/profile` is enough. The web app has the same as an Import button on the
-certifications.
+certifications. Certificate issuers show their logo: bundled ones are from
+[Simple Icons](https://simpleicons.org) (CC0); for brands whose logos are not freely licensed
+(Microsoft, AWS, Oracle, Forsvaret) the page loads the icon from their own website.
 
 ## Your own profile repository, encrypted
 
