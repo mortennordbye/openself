@@ -180,6 +180,13 @@ def pushed_file(home):
     return os.path.join(home, ".openself", "pushed")  # local only: the profile commit last encrypted
 
 
+def push_stamp(home):
+    """What was last encrypted: the profile commit and the recipients. Unchanged means no new upload."""
+    import hashlib
+    with open(recipients_file(home), "rb") as f:
+        return f"{head(profile_dir(home))} {hashlib.sha256(f.read()).hexdigest()[:16]}"
+
+
 def head(repo):
     r = subprocess.run(["git", "-C", repo, "rev-parse", "HEAD"], capture_output=True, text=True)
     return r.stdout.strip() if r.returncode == 0 else ""
@@ -190,7 +197,7 @@ def status(home):
     pushed = ""
     if os.path.exists(pushed_file(home)):
         with open(pushed_file(home)) as f:
-            pushed = f.read().strip()
+            pushed = f.read().strip().split(" ")[0]
     return {"home": home, "profile": os.path.isfile(os.path.join(p, model.MANIFEST)),
             "encrypted": os.path.exists(os.path.join(home, "profile.age")),
             "recipients": len(recipients(home)), "key": identity() is not None,
@@ -220,8 +227,10 @@ def unpack(data):
     return data[len(MAGIC) + 8:len(MAGIC) + 8 + n]
 
 
-def push(home, commit=True, upload=True):
-    """Encrypt the profile into profile.age and commit it (and git push when there is a remote)."""
+def push(home, commit=True, upload=True, force=False):
+    """Encrypt the profile into profile.age and commit it (and git push when there is a remote).
+    Does nothing when neither the profile nor the recipients changed since the last push, since
+    every upload is visible."""
     need_age()
     p = profile_dir(home)
     if not history.is_repo(p):
@@ -231,19 +240,23 @@ def push(home, commit=True, upload=True):
         raise SyncError("no recipients: run `openself keys init` first")
     index.write_all(p)
     history.commit(p, history.message("profile", "changes before an encrypted push", "tool"))
+    out = os.path.join(home, "profile.age")
+    if not force and os.path.exists(out) and os.path.exists(pushed_file(home)):
+        with open(pushed_file(home)) as f:
+            if f.read().strip() == push_stamp(home):
+                return {"ok": True, "size": os.path.getsize(out), "commit": None, "uploaded": False, "unchanged": True}
     with tempfile.TemporaryDirectory() as tmp:
         bundle = os.path.join(tmp, "profile.bundle")
         run(["git", "-C", p, "bundle", "create", bundle, "--all"])
         with open(bundle, "rb") as f:
             data = pack(f.read())
-    out = os.path.join(home, "profile.age")
     enc = run(["age", "-R", recipients_file(home)], input=data)
     tmp_out = out + ".tmp"
     with open(tmp_out, "wb") as f:
         f.write(enc)
     os.replace(tmp_out, out)
     with open(pushed_file(home), "w") as f:
-        f.write(head(p) + "\n")
+        f.write(push_stamp(home) + "\n")
     result = {"ok": True, "size": len(enc), "commit": None, "uploaded": False}
     if commit and history.is_repo(home):
         subprocess.run(["git", "-C", home, "add", "profile.age", ".openself/recipients", ".gitignore"], check=True)

@@ -35,6 +35,8 @@ def sync_action(home, name):
             return 200, {"ok": True, "message": ("Key created in " if created else "Key found in ") + where, "public": pub}
         if name == "push":
             r = sync.push(home)
+            if r.get("unchanged"):
+                return 200, dict(r, message="Nothing changed since the last push")
             return 200, dict(r, message=f"Encrypted ({r['size'] // 1024} KiB)" + (" and pushed" if r["uploaded"] else ""))
         r = sync.pull(home)
         return 200, dict(r, message=r["result"])

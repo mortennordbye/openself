@@ -72,7 +72,10 @@ def main(argv=None):
                     print("Back up the secret key now, for example in a password manager. Without it, profile.age cannot be read.")
             elif a.cmd == "push":
                 r = sync.push(home)
-                print(f"profile.age: {r['size']} bytes" + (f", commit {r['commit']}" if r["commit"] else ", unchanged") + (", pushed" if r["uploaded"] else ""))
+                if r.get("unchanged"):
+                    print("nothing changed since the last push")
+                else:
+                    print(f"profile.age: {r['size']} bytes" + (f", commit {r['commit']}" if r["commit"] else "") + (", pushed" if r["uploaded"] else ""))
             else:
                 r = sync.pull(home)
                 print(f"{r['result']} ({r['head']})")

@@ -55,6 +55,7 @@ class Sync(unittest.TestCase):
         tracked = subprocess.run(["git", "-C", self.a, "ls-files"], capture_output=True, text=True).stdout.split()
         self.assertEqual(sorted(tracked), [".gitignore", ".openself/recipients", "profile.age"])
         self.assertFalse(sync.status(self.a)["unpushed"])
+        self.assertTrue(sync.push(self.a)["unchanged"])  # nothing new: no new upload
 
         # A second machine: clone the home, pull, change, push; then the first pulls.
         b = os.path.join(self.tmp, "b")
