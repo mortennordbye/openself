@@ -11,7 +11,9 @@ to every recipient, committed as profile.age. pull: the reverse, then a fast-for
 GitHub sees one opaque file and when it changes; no names, no number of entries.
 
 The secret key never touches the disk: on macOS it lives in the Keychain, elsewhere in a file only
-the user can read (~/.config/openself/identity.txt), and it reaches age through a pipe.
+the user can read (~/.config/openself/identity.txt), and it reaches age through a pipe. It can also
+come from a password manager: a command in ~/.config/openself/identity-command (or the environment
+variable OPENSELF_IDENTITY_COMMAND) that prints the key, such as `bw get notes "OpenSelf age key"`.
 """
 
 import os
@@ -26,6 +28,7 @@ from . import history, index, model
 PAD = 64 * 1024
 KEYCHAIN = ("openself", "age-identity")
 IDENTITY_FILE = os.path.expanduser("~/.config/openself/identity.txt")
+IDENTITY_COMMAND_FILE = os.path.expanduser("~/.config/openself/identity-command")
 
 
 class SyncError(Exception):
@@ -80,6 +83,27 @@ def mac():
     return platform.system() == "Darwin" and shutil.which("security")
 
 
+def identity_command():
+    """The command that prints the key, when one is set (environment first, then the config file)."""
+    cmd = os.environ.get("OPENSELF_IDENTITY_COMMAND", "").strip()
+    if not cmd and os.path.exists(IDENTITY_COMMAND_FILE):
+        with open(IDENTITY_COMMAND_FILE, encoding="utf-8") as f:
+            cmd = next((l.strip() for l in f if l.strip() and not l.lstrip().startswith("#")), "")
+    return cmd
+
+
+def run_identity_command(cmd):
+    r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=120)
+    key = "".join(l.strip() + "\n" for l in r.stdout.splitlines() if l.strip().startswith("AGE-SECRET-KEY"))
+    if r.returncode != 0 or not key:
+        why = (r.stderr or "").strip().splitlines()[-1:] or ["it printed no AGE-SECRET-KEY line"]
+        hint = ""
+        if cmd.split()[0] == "bw":
+            hint = " Is Bitwarden unlocked? Run `export BW_SESSION=$(bw unlock --raw)` in the shell that runs openself."
+        raise SyncError(f"could not get the key from `{cmd}`: {why[0]}.{hint}")
+    return key
+
+
 def find_identity():
     """(secret key text, where it is), or (None, None) when this machine has none."""
     if os.environ.get("OPENSELF_IDENTITY"):
@@ -88,6 +112,9 @@ def find_identity():
             return None, None
         with open(path, encoding="utf-8") as f:
             return f.read(), path
+    cmd = identity_command()
+    if cmd:
+        return run_identity_command(cmd), f"the command `{cmd}`"
     if mac():
         r = subprocess.run(["security", "find-generic-password", "-s", KEYCHAIN[0], "-a", KEYCHAIN[1], "-w"],
                            capture_output=True, text=True)
@@ -101,6 +128,13 @@ def find_identity():
 
 def identity():
     return find_identity()[0]
+
+
+def has_identity():
+    """Whether this machine has a key, without asking a password manager for it (status polls often)."""
+    if not os.environ.get("OPENSELF_IDENTITY") and identity_command():
+        return True
+    return identity() is not None
 
 
 def new_key():
@@ -200,7 +234,7 @@ def status(home):
             pushed = f.read().strip().split(" ")[0]
     return {"home": home, "profile": os.path.isfile(os.path.join(p, model.MANIFEST)),
             "encrypted": os.path.exists(os.path.join(home, "profile.age")),
-            "recipients": len(recipients(home)), "key": identity() is not None,
+            "recipients": len(recipients(home)), "key": has_identity(),
             "unpushed": bool(head(p)) and head(p) != pushed, "remote": bool(git_out(home, "remote"))}
 
 

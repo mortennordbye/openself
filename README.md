@@ -69,6 +69,11 @@ and when it changes. The secret key lives in the macOS Keychain (elsewhere in
 a file. **Back it up**, for example in a password manager: without it the profile cannot be read.
 Add another machine or person by adding their age public key to `.openself/recipients` and pushing.
 
+To keep the key only in a password manager, put a command that prints it in
+`~/.config/openself/identity-command` (or `OPENSELF_IDENTITY_COMMAND`). With Bitwarden, store the
+key as a secure note and use `bw get notes "OpenSelf age key"`; unlock first with
+`export BW_SESSION=$(bw unlock --raw)` in the shell that runs `openself`.
+
 Needs [age](https://age-encryption.org) 1.3 or newer for post-quantum keys (`brew install age`);
 older versions fall back to classic keys.
 

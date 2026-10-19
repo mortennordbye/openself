@@ -91,6 +91,32 @@ class Sync(unittest.TestCase):
         with self.assertRaises(sync.SyncError):
             sync.push(self.a)
 
+    def test_key_from_a_command(self):
+        # A password manager's CLI prints the key; here `cat` stands in for `bw get notes ...`.
+        key = os.environ.pop("OPENSELF_IDENTITY")
+        os.environ["OPENSELF_IDENTITY_COMMAND"] = f"echo noise; cat {key}"
+        self.assertTrue(sync.has_identity())
+        secret, where = sync.find_identity()
+        self.assertTrue(secret.startswith("AGE-SECRET-KEY"))
+        self.assertEqual(secret.count("\n"), 1)
+        self.assertIn("cat", where)
+        p = sync.profile_dir(self.a)
+        shutil.copytree(os.path.join(ROOT, "example"), p)
+        subprocess.run(["git", "init", "-q", "-b", "main", p], check=True)
+        history.commit(p, history.message("profile", "start", "tool"))
+        sync.keys_init(self.a)
+        sync.push(self.a, upload=False)
+        shutil.rmtree(p)
+        self.assertEqual(sync.pull(self.a, download=False)["result"], "cloned")
+
+    def test_key_command_that_fails_says_why(self):
+        os.environ.pop("OPENSELF_IDENTITY")
+        os.environ["OPENSELF_IDENTITY_COMMAND"] = "bw-not-installed-here get notes x"
+        self.assertTrue(sync.has_identity())  # configured; not run by the status check
+        with self.assertRaises(sync.SyncError) as e:
+            sync.identity()
+        self.assertIn("could not get the key", str(e.exception))
+
     def test_pack_unpack_pads(self):
         packed = sync.pack(b"x" * 1000)
         self.assertEqual(len(packed) % sync.PAD, 0)
