@@ -23,8 +23,12 @@
                                                   --history checks every commit (for CI)
   trust [HOME] [--yes]                            approve the recipients this machine has not seen yet
                                                   (push refuses to encrypt to a key not approved here)
-  push [HOME]                                     encrypt profile/ into profile.age, commit and push
-  pull [HOME]                                     fetch profile.age, decrypt it into profile/
+  push [HOME]                                     encrypt profile/ into profile.age (and each vault into
+                                                  <name>.age), commit and push
+  pull [HOME]                                     fetch and decrypt profile.age and every vault
+  vault add NAME [HOME]                           a vault: <home>/NAME/, any files (documents, images,
+                                                  PDFs), versioned with git and pushed encrypted as NAME.age
+  vault list [HOME]                               the vaults, and whether each has changes to push
 
 In a home folder (one with .openself/), DIR defaults to its profile/ and HOME to the home.
 """
@@ -66,6 +70,8 @@ def main(argv=None):
     p = sub.add_parser("guard"); p.add_argument("dir", nargs="?"); p.add_argument("--hook", choices=["pre-commit", "pre-push"])
     p.add_argument("--history", action="store_true")
     p = sub.add_parser("trust"); p.add_argument("dir", nargs="?"); p.add_argument("--yes", action="store_true")
+    p = sub.add_parser("vault"); p.add_argument("action", choices=["add", "list"])
+    p.add_argument("args", nargs="*", help="add: NAME [HOME]; list: [HOME]")
     a = ap.parse_args(argv)
 
     if a.cmd == "guard":
@@ -105,6 +111,31 @@ def main(argv=None):
         sync.trust(home, [k for k, _ in new])
         print(f"approved {len(new)}")
         return 0
+    if a.cmd == "vault":
+        name = a.args[0] if a.action == "add" and a.args else ""
+        if a.action == "add" and not name:
+            print("usage: openself vault add NAME [HOME]", file=sys.stderr)
+            return 1
+        where = a.args[1] if a.action == "add" and len(a.args) > 1 else (a.args[0] if a.action == "list" and a.args else ".")
+        home = sync.find_home(where)
+        if not home:
+            print("not in an OpenSelf home folder; run `openself home` first", file=sys.stderr)
+            return 1
+        try:
+            if a.action == "add":
+                path = sync.add_vault(home, name)
+                print(f"vault {name}: {path}\nPut any files in it; `openself push` encrypts every version into {name}.age.")
+            else:
+                st = sync.status(home)["vaults"]
+                for v, info in st.items():
+                    print(f"{v:<16} {'here' if info['here'] else 'not here (pull)':<16} "
+                          f"{'encrypted' if info['encrypted'] else 'never pushed':<13} {'changes to push' if info['unpushed'] else ''}")
+                if not st:
+                    print("no vaults; add one with `openself vault add NAME`")
+        except sync.SyncError as e:
+            print(e, file=sys.stderr)
+            return 1
+        return 0
     if a.cmd in ("serve", "keys", "push", "pull"):
         home = sync.find_home(a.dir or ".")
         try:
@@ -136,11 +167,16 @@ def main(argv=None):
                 if r.get("unchanged"):
                     print("nothing changed since the last push")
                 else:
-                    print(f"profile.age: {r['size']} bytes" + (f", commit {r['commit']}" if r["commit"] else "") + (", pushed" if r["uploaded"] else "")
-                      + (f" as {r['pr']} (merges by itself once the guard passes)" if r.get("pr") else ""))
+                    sizes = ", ".join(f"{n}.age {b} bytes" for n, b in r["encrypted"].items()) or "no new encryption"
+                    print(sizes + (f", commit {r['commit']}" if r["commit"] else "") + (", pushed" if r["uploaded"] else "")
+                          + (f" as {r['pr']} (merges by itself once the guard passes)" if r.get("pr") else ""))
+                for v in r.get("missing", []):
+                    print(f"{v}: declared but not on this machine; `openself pull` gets it")
             else:
                 r = sync.pull(home)
-                print(f"{r['result']} ({r['head']})")
+                print(f"profile: {r['result']} ({r['head']})")
+                for v, x in r.get("vaults", {}).items():
+                    print(f"{v}: {x['result']}" + (f" ({x['head']})" if x.get("head") else ""))
         except sync.SyncError as e:
             print(e, file=sys.stderr)
             return 1

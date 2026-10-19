@@ -368,20 +368,94 @@ def with_identity(args, **kw):
 
 
 # ---- push and pull ---------------------------------------------------------------------------
+# A home encrypts the profile and any number of vaults: more folders of any files (documents,
+# images, PDFs, CVs), each its own git repository, listed in .openself/config as `vaults = cv`.
+# Each becomes <name>.age, in the same format as profile.age, so every version of every file
+# travels encrypted and the public repository sees only opaque files and when they change.
+
+MAX_FILE = 95 * 1024 * 1024  # GitHub refuses files over 100 MB
+
 
 def profile_dir(home):
     return os.path.join(home, "profile")
 
 
+def config_text(home):
+    try:
+        with open(os.path.join(home, ".openself", "config"), encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+def vaults(home):
+    """The vault names this home declares, in order."""
+    return guard.vault_names(config_text(home))
+
+
+def folders(home):
+    """[(name, folder)]: the profile first, then each vault."""
+    return [("profile", profile_dir(home))] + [(v, os.path.join(home, v)) for v in vaults(home)]
+
+
+def add_vault(home, name):
+    """Declare a vault: a git repository in <home>/<name>/ (kept out of the home's git), listed in
+    .openself/config so every machine pulls it too. Returns its folder."""
+    if not guard.VAULT_NAME.fullmatch(name) or name in guard.NOT_VAULTS:
+        raise SyncError(f"bad vault name {name!r}: lower-case letters, digits, - and _, not profile")
+    path = os.path.join(home, name)
+    if os.path.exists(path) and os.listdir(path) and not history.is_repo(path):
+        raise SyncError(f"{path} exists and is not a git repository; move it aside or make it one first")
+    names = vaults(home)
+    if name not in names:
+        text = config_text(home)
+        lines = [l for l in text.splitlines() if l.partition("=")[0].strip() != "vaults"]
+        lines.append("vaults = " + ", ".join(names + [name]))
+        with open(os.path.join(home, ".openself", "config"), "w", encoding="utf-8") as f:
+            f.write("\n".join(lines).lstrip("\n") + "\n")
+    gi = os.path.join(home, ".gitignore")
+    lines = open(gi, encoding="utf-8").read().splitlines() if os.path.exists(gi) else []
+    if f"/{name}/" not in lines:
+        with open(gi, "a", encoding="utf-8") as f:
+            f.write(("\n" if lines and lines[-1] else "") + f"# The decrypted vault never goes in this repository; only {name}.age does.\n/{name}/\n")
+    if not history.is_repo(path):
+        os.makedirs(path, exist_ok=True)
+        run(["git", "init", "-q", "-b", "main", path])
+    if not head(path):
+        history.git(path, "add", "-A")
+        history.git(path, "commit", "-q", "--allow-empty", "-m", history.message(name, "vault created", "tool"))
+    return path
+
+
 def pushed_file(home):
-    return os.path.join(home, ".openself", "pushed")  # local only: the profile commit last encrypted
+    return os.path.join(home, ".openself", "pushed")  # local only: what was last encrypted, per folder
 
 
-def push_stamp(home):
-    """What was last encrypted: the profile commit and the recipients. Unchanged means no new upload."""
+def recipients_hash(home):
     import hashlib
     with open(recipients_file(home), "rb") as f:
-        return f"{head(profile_dir(home))} {hashlib.sha256(f.read()).hexdigest()[:16]}"
+        return hashlib.sha256(f.read()).hexdigest()[:16]
+
+
+def pushed(home):
+    """{name: 'commit recipients-hash'} last encrypted on this machine. An old one-line file is the profile's."""
+    out = {}
+    try:
+        with open(pushed_file(home)) as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) == 2:
+                    out["profile"] = " ".join(parts)
+                elif len(parts) == 3:
+                    out[parts[0]] = " ".join(parts[1:])
+    except OSError:
+        pass
+    return out
+
+
+def push_stamp(home, folder=None):
+    """What would be encrypted now for one folder: its commit and the recipients."""
+    return f"{head(folder or profile_dir(home))} {recipients_hash(home)}"
 
 
 def head(repo):
@@ -391,14 +465,16 @@ def head(repo):
 
 def status(home):
     p = profile_dir(home)
-    pushed = ""
-    if os.path.exists(pushed_file(home)):
-        with open(pushed_file(home)) as f:
-            pushed = f.read().strip().split(" ")[0]
+    done = pushed(home)
+    vs = {}
+    for name, path in folders(home)[1:]:
+        vs[name] = {"here": history.is_repo(path), "encrypted": os.path.exists(os.path.join(home, f"{name}.age")),
+                    "unpushed": bool(head(path)) and head(path) != done.get(name, "").split(" ")[0]}
     return {"home": home, "profile": os.path.isfile(os.path.join(p, model.MANIFEST)),
             "encrypted": os.path.exists(os.path.join(home, "profile.age")),
             "recipients": len(recipients(home)), "key": has_identity(),
-            "unpushed": bool(head(p)) and head(p) != pushed, "remote": bool(git_out(home, "remote"))}
+            "unpushed": (bool(head(p)) and head(p) != done.get("profile", "").split(" ")[0]) or any(v["unpushed"] for v in vs.values()),
+            "vaults": vs, "remote": bool(git_out(home, "remote"))}
 
 
 def git_out(repo, *args):
@@ -411,23 +487,41 @@ MAGIC = b"OPENSELF-BUNDLE-1\n"
 
 def pack(bundle_bytes):
     """Magic, length, the git bundle, then zeros up to a multiple of 64 KiB, so the encrypted size
-    only says roughly how big the profile is."""
+    only says roughly how big the folder is."""
     head = MAGIC + len(bundle_bytes).to_bytes(8, "big")
     body = head + bundle_bytes
     return body + bytes(-len(body) % PAD)
 
 
-def unpack(data):
+def unpack(data, name="profile"):
     if not data.startswith(MAGIC):
-        raise SyncError("profile.age does not contain an OpenSelf profile")
+        raise SyncError(f"{name}.age does not contain an OpenSelf bundle")
     n = int.from_bytes(data[len(MAGIC):len(MAGIC) + 8], "big")
     return data[len(MAGIC) + 8:len(MAGIC) + 8 + n]
 
 
+def encrypt_folder(home, name, path):
+    """Bundle the folder's repository (every version) and encrypt it to <name>.age. Returns its size."""
+    with tempfile.TemporaryDirectory() as tmp:
+        bundle = os.path.join(tmp, f"{name}.bundle")
+        run(["git", "-C", path, "bundle", "create", bundle, "--all"])
+        with open(bundle, "rb") as f:
+            data = pack(f.read())
+    enc = run(["age", "-R", recipients_file(home)], input=data)
+    if len(enc) > MAX_FILE:
+        raise SyncError(f"{name}.age would be {len(enc) // (1024 * 1024)} MB; GitHub refuses files over 100 MB. "
+                        f"Split {name}/ into more vaults, or remove large files from its history")
+    out = os.path.join(home, f"{name}.age")
+    with open(out + ".tmp", "wb") as f:
+        f.write(enc)
+    os.replace(out + ".tmp", out)
+    return len(enc)
+
+
 def push(home, commit=True, upload=True, force=False):
-    """Encrypt the profile into profile.age and commit it (and git push when there is a remote).
-    Does nothing when neither the profile nor the recipients changed since the last push, since
-    every upload is visible."""
+    """Encrypt the profile into profile.age and each vault into <name>.age, commit them (and git push
+    when there is a remote). A folder that did not change since the last push, with the same
+    recipients, is not encrypted again, since every upload is visible. Nothing changed: nothing done."""
     need_age()
     p = profile_dir(home)
     if not history.is_repo(p):
@@ -448,32 +542,37 @@ def push(home, commit=True, upload=True, force=False):
                         + "\nIf they are yours (a new machine), run `openself trust`. If not, remove them.")
     index.write_all(p)
     history.commit(p, history.message("profile", "changes before an encrypted push", "tool"))
-    out = os.path.join(home, "profile.age")
-    if not force and os.path.exists(out) and os.path.exists(pushed_file(home)):
-        with open(pushed_file(home)) as f:
-            if f.read().strip() == push_stamp(home):
-                return {"ok": True, "size": os.path.getsize(out), "commit": None, "uploaded": False, "unchanged": True}
-    with tempfile.TemporaryDirectory() as tmp:
-        bundle = os.path.join(tmp, "profile.bundle")
-        run(["git", "-C", p, "bundle", "create", bundle, "--all"])
-        with open(bundle, "rb") as f:
-            data = pack(f.read())
-    enc = run(["age", "-R", recipients_file(home)], input=data)
-    tmp_out = out + ".tmp"
-    with open(tmp_out, "wb") as f:
-        f.write(enc)
-    os.replace(tmp_out, out)
+    done, sizes, missing = pushed(home), {}, []
+    for name, path in folders(home):
+        if name != "profile":
+            if not history.is_repo(path):
+                missing.append(name)  # declared, but not here: pull it first; its .age stays as it is
+                continue
+            history.commit(path, history.message(name, "changes before an encrypted push", "tool"))
+            if not head(path):
+                continue
+        out = os.path.join(home, f"{name}.age")
+        if not force and os.path.exists(out) and done.get(name) == push_stamp(home, path):
+            continue
+        sizes[name] = encrypt_folder(home, name, path)
+        done[name] = push_stamp(home, path)
     with open(pushed_file(home), "w") as f:
-        f.write(push_stamp(home) + "\n")
-    result = {"ok": True, "size": len(enc), "commit": None, "uploaded": False}
+        f.write("".join(f"{n} {v}\n" for n, v in done.items()))
+    size = sizes.get("profile", os.path.getsize(os.path.join(home, "profile.age")) if os.path.exists(os.path.join(home, "profile.age")) else 0)
+    result = {"ok": True, "size": size, "encrypted": sizes, "missing": missing, "commit": None, "uploaded": False}
+    if not sizes:
+        result["unchanged"] = True
     if commit and history.is_repo(home):
         # Only these files: anything else that happens to be staged stays out of the snapshot.
-        own = ["profile.age", ".openself/recipients", ".gitignore"]
+        own = [f"{n}.age" for n, _ in folders(home) if os.path.exists(os.path.join(home, f"{n}.age"))]
+        own += [x for x in (".openself/recipients", ".openself/config", ".gitignore") if os.path.exists(os.path.join(home, x))]
         subprocess.run(["git", "-C", home, "add", *own], check=True)
         if subprocess.run(["git", "-C", home, "diff", "--cached", "--quiet", "--", *own]).returncode:
-            run(["git", "-C", home, "commit", "-q", "-m", "Encrypted profile snapshot", "--", *own])
+            what = "Encrypted profile snapshot" if list(sizes) in ([], ["profile"]) else "Encrypted snapshot: " + ", ".join(sizes)
+            run(["git", "-C", home, "commit", "-q", "-m", what, "--", *own])
             result["commit"] = git_out(home, "rev-parse", "--short", "HEAD")
-        if upload and git_out(home, "remote"):
+            result.pop("unchanged", None)
+        if upload and git_out(home, "remote") and (result["commit"] or not result.get("unchanged")):
             bad = guard.unpushed(home)
             if bad:
                 raise SyncError("refusing to upload, the home repository would publish:\n  " + "\n  ".join(bad))
@@ -504,44 +603,56 @@ def push_pull_request(home):
     return url
 
 
+def pull_folder(home, name, path):
+    """Decrypt <name>.age and clone or fast-forward the folder to it. Never merges by itself."""
+    src = os.path.join(home, f"{name}.age")
+    with open(src, "rb") as f:
+        plain = with_identity(["age", "-d"], input=f.read())
+    with tempfile.TemporaryDirectory() as tmp:
+        bundle = os.path.join(tmp, f"{name}.bundle")
+        with open(bundle, "wb") as f:
+            f.write(unpack(plain, name))
+        if not history.is_repo(path):
+            if os.path.exists(path) and os.listdir(path):
+                raise SyncError(f"{path} exists and is not a git repository")
+            run(["git", "clone", "-q", bundle, path])
+            run(["git", "-C", path, "remote", "remove", "origin"])
+            return {"ok": True, "result": "cloned", "head": head(path)[:7]}
+        run(["git", "-C", path, "fetch", "-q", bundle, "+refs/heads/*:refs/remotes/encrypted/*"])
+    branch = git_out(path, "rev-parse", "--abbrev-ref", "HEAD") or "main"
+    theirs = git_out(path, "rev-parse", f"refs/remotes/encrypted/{branch}")
+    mine = head(path)
+    if not theirs or theirs == mine:
+        return {"ok": True, "result": "up to date", "head": mine[:7]}
+    if subprocess.run(["git", "-C", path, "merge-base", "--is-ancestor", theirs, mine]).returncode == 0:
+        return {"ok": True, "result": "local is newer; push it", "head": mine[:7]}
+    if subprocess.run(["git", "-C", path, "merge-base", "--is-ancestor", mine, theirs]).returncode != 0:
+        raise SyncError(f"{name} was changed on two machines; merge refs/remotes/encrypted/"
+                        f"{branch} in {path} with git, then push")
+    if git_out(path, "status", "--porcelain"):
+        history.commit(path, history.message(name, "changes before a pull", "tool"))
+        if subprocess.run(["git", "-C", path, "merge-base", "--is-ancestor", head(path), theirs]).returncode != 0:
+            raise SyncError(f"there are local changes in {name}/; push or commit them before pulling")
+    run(["git", "-C", path, "merge", "-q", "--ff-only", theirs])
+    return {"ok": True, "result": "updated", "head": head(path)[:7]}
+
+
 def pull(home, download=True):
-    """Fetch the newest profile.age, decrypt it and fast-forward profile/ to it."""
+    """Fetch the newest encrypted files, decrypt them and fast-forward profile/ and every vault.
+    The result is the profile's, with each vault's under "vaults"."""
     need_age()
     if history.is_repo(home):
         guard.install(home)
     start_trust(home)  # before the download, so keys that arrive with it need approval
     if download and git_out(home, "remote"):
         run(["git", "-C", home, "pull", "-q", "--ff-only"])
-    src = os.path.join(home, "profile.age")
-    if not os.path.exists(src):
+    if not os.path.exists(os.path.join(home, "profile.age")):
         raise SyncError("there is no profile.age to pull")
-    with open(src, "rb") as f:
-        tar_bytes = with_identity(["age", "-d"], input=f.read())
-    p = profile_dir(home)
-    with tempfile.TemporaryDirectory() as tmp:
-        bundle = os.path.join(tmp, "profile.bundle")
-        with open(bundle, "wb") as f:
-            f.write(unpack(tar_bytes))
-        if not history.is_repo(p):
-            if os.path.exists(p) and os.listdir(p):
-                raise SyncError(f"{p} exists and is not a profile repository")
-            run(["git", "clone", "-q", bundle, p])
-            run(["git", "-C", p, "remote", "remove", "origin"])
-            return {"ok": True, "result": "cloned", "head": head(p)[:7]}
-        run(["git", "-C", p, "fetch", "-q", bundle, "+refs/heads/*:refs/remotes/encrypted/*"])
-    branch = git_out(p, "rev-parse", "--abbrev-ref", "HEAD") or "main"
-    theirs = git_out(p, "rev-parse", f"refs/remotes/encrypted/{branch}")
-    mine = head(p)
-    if not theirs or theirs == mine:
-        return {"ok": True, "result": "up to date", "head": mine[:7]}
-    if subprocess.run(["git", "-C", p, "merge-base", "--is-ancestor", theirs, mine]).returncode == 0:
-        return {"ok": True, "result": "local is newer; push it", "head": mine[:7]}
-    if subprocess.run(["git", "-C", p, "merge-base", "--is-ancestor", mine, theirs]).returncode != 0:
-        raise SyncError("the profile was changed on two machines; merge refs/remotes/encrypted/"
-                        f"{branch} in {p} with git, then push")
-    if git_out(p, "status", "--porcelain"):
-        history.commit(p, history.message("profile", "changes before a pull", "tool"))
-        if subprocess.run(["git", "-C", p, "merge-base", "--is-ancestor", head(p), theirs]).returncode != 0:
-            raise SyncError("there are local changes; push or commit them before pulling")
-    run(["git", "-C", p, "merge", "-q", "--ff-only", theirs])
-    return {"ok": True, "result": "updated", "head": head(p)[:7]}
+    result = pull_folder(home, "profile", profile_dir(home))
+    result["vaults"] = {}
+    for name, path in folders(home)[1:]:
+        if os.path.exists(os.path.join(home, f"{name}.age")):
+            result["vaults"][name] = pull_folder(home, name, path)
+        else:
+            result["vaults"][name] = {"ok": True, "result": "not pushed yet", "head": head(path)[:7]}
+    return result

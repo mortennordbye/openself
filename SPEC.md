@@ -247,6 +247,14 @@ profile.age            the profile, encrypted
 .gitignore             keeps profile/ (the decrypted working copy) out
 ```
 
+A home may also hold *vaults*: more folders of any files, each its own git repository, declared
+in `.openself/config` with one line, `vaults = cv, docs` (names of lower-case letters, digits,
+`-` and `_`, never `profile`). Each vault `<name>/` is kept out of the home's git like `profile/`
+and is encrypted, in the same format, into `<name>.age`. A reader decrypts every vault the config
+lists that has a `.age` file, the same way as the profile. A writer encrypts a vault only when it
+is present on that machine and changed since its last push, and never touches the `.age` of a
+vault that is declared but not present.
+
 `profile.age` is an [age](https://age-encryption.org) file encrypted to every recipient. Its
 plaintext is the line `OPENSELF-BUNDLE-1`, a newline, the length of the bundle as 8 bytes (big
 endian), a `git bundle` of the whole profile repository (`--all`, so every version), and zero
@@ -256,14 +264,15 @@ the user merges with git.
 
 A tool that writes to a home must never let it publish plaintext. `openself guard` checks the
 index before a commit and every outgoing commit before a push, and refuses anything under
-`profile/`, any file outside an allow list (the files above, the tools next to them, and globs in
+`profile/` or a vault folder, any file outside an allow list (the files above, the tools next to them, and globs in
 `.openself/allow` that start with a fixed name), an allowed file that contains the person's name,
-email or phone, an employer or a customer from the decrypted profile, a `profile.age` that is not
-an age header followed by ciphertext only, and anything but public keys in the recipients file.
+email or phone, an employer or a customer from the decrypted profile, a `profile.age` or vault
+`<name>.age` that is not an age header followed by ciphertext only, and anything but public keys in the recipients file.
 Whatever git cannot read counts as a problem. It runs as git pre-commit and pre-push hooks, which
 `openself` installs on every push and pull (a push refuses when another tool's hook is in the
 way), and again on every outgoing commit before each upload. `openself guard --history` checks
-every commit, for CI. A push commits only `profile.age`, the recipients and `.gitignore`.
+every commit, for CI. A push commits only `profile.age`, the vaults' `.age` files, the recipients, `.openself/config`
+and `.gitignore`.
 
 A home whose main branch takes no direct pushes (a GitHub ruleset that requires a pull request
 and the guard check) says so in `.openself/config` with the line `push = pull-request`. A push
