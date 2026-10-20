@@ -118,15 +118,15 @@ def public_view(profile):
             a["employment"] = ""
         assignments.append(a)
 
-    # Technology across all assignments (it is the owner's experience, nda or not), with the
-    # evidence limited to the entries shown here.
+    # Technology across all assignments (it is the owner's experience, nda or not), most months
+    # first, with the evidence limited to the entries shown here.
     shown = {e.id for e in work}
     tech = []
     for name, (months, ids, ongoing) in index.tech_evidence(profile).items():
         tech.append({"name": name, "months": len(months), "assignments": len(ids),
                      "ongoing": any(i in shown for i in ongoing),
                      "entries": [slug[i] for i in ids if i in shown]})
-    tech.sort(key=lambda t: (-t["assignments"], t["name"]))
+    tech.sort(key=lambda t: (-t["months"], t["name"]))
 
     return {
         "format": "openself-public-1",
