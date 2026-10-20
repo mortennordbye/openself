@@ -86,6 +86,15 @@ class PublicView(unittest.TestCase):
         self.assertIn("Hemmelig Kunde AS", export.leaks("hemmelig kunde as", self.profile))
         self.assertEqual(export.leaks("<p>Worked for a power company</p>", self.profile), [])
 
+    def test_public_elsewhere_is_not_hidden(self):
+        # A portfolio entry keeps its list anonymised, but one of its customers is named in an entry of its own.
+        with open(os.path.join(self.dir, "assignments", "2018-01-eksempel-bygg-driftstekniker.md"), "w", encoding="utf-8") as f:
+            f.write(NDA.replace("2020-01-hemmelig-kunde-utvikler", "2018-01-eksempel-bygg-driftstekniker")
+                    .replace("Hemmelig Kunde AS", "Eksempel Bygg AS").replace("customer_public: nda", "customer_public: public"))
+        profile = model.load_profile(self.dir)
+        self.assertNotIn("Eksempel Bygg AS", export.hidden(profile))
+        self.assertIn("Fiktiv Regnskap AS", export.hidden(profile))
+
     def test_tables(self):
         self.assertEqual(self.view["certifications"][0]["name"], "Certified Kubernetes Administrator (CKA)")
         self.assertEqual(set(self.view["education"][0]), {"degree", "school", "from", "to"})
