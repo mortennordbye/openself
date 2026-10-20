@@ -107,15 +107,19 @@ empty ones included, so a reader sees what is missing.
 | `customer_alias`, `sector` | assignment | how to describe the customer when it may not be named |
 | `role` | assignment | the owner's role, as they describe it |
 | `employer`, `title`, `location`, `employment_type` | employment | the real title, exactly as the employer uses it |
+| `name`, `title`, `location`, `languages` | person | name, professional title, where they live, languages with level |
+| `clearance`, `clearance_valid_until` | person | security clearance level and its expiry date |
+| `email`, `phone`, `linkedin`, `github`, `links` | person | contact details and public pages |
 | `start`, `end` | both | `YYYY-MM` (`YYYY` when the month is unknown); `end` may be `ongoing` |
 | `breaks` | both | leave inside the period, `YYYY-MM/YYYY-MM`, both months included |
 | `allocation`, `team_size` | assignment | percent of full time; people on the team, owner included |
-| `tech`, `methods` | both | canonical names from `tech-names.txt` |
+| `tech` | both | canonical names from `tech-names.txt` |
+| `methods` | assignment | methods and practices in the owner's words (GitOps, Scrum) |
 | `imports` | certifications | public pages the table is imported from (a Credly profile, a Microsoft Learn transcript link), so the import can run again |
 | `confidence` | all | `verified`, `stated`, `old-cv`, `linkedin`, `needs-confirmation` |
 | `status`, `last_reviewed` | all | `active` or `removed`; date of the last check or change |
 | `removed`, `removed_reason` | removed | when and why, in the owner's words |
-| `*_en` | some | a vetted English version of a text field when the profile is not in English |
+| `title_en`, `role_en` | employment, assignment | a vetted English version of the title or role when the profile is not in English |
 | `x-<tool>-<name>` | all | a tool's own field. Kept as is and not validated |
 
 **The profile is the source.** Everything in it is the owner's own record, so an entry does not

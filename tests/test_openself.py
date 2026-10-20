@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import subprocess
@@ -342,6 +343,13 @@ class IndexAndLint(Tmp):
         issues = self.lint_with(e, {"start": "2020-10"})
         self.assertTrue(any(lv == "prompt" and "overlaps" in msg and "2020-10 to 2020-12" in msg
                             for lv, _, _, msg in issues), issues)
+
+    def test_manifest_languages(self):
+        for langs, level in (([], "error"), (["norsk"], "error"), (["xx"], "warning")):
+            with self.subTest(langs=langs):
+                issues = self.lint_with("openself.json", text=json.dumps({"format": "openself", "schema": 1, "languages": langs}))
+                shutil.rmtree(self.root)
+                self.assertTrue(self.has(issues, level, "languages", ""), issues)
 
     def test_parse_error_and_id_mismatch(self):
         issues = self.lint_with("assignments/2021-04-vestkraft-skymigrering.md", text="---\na: b: c\n---\n")

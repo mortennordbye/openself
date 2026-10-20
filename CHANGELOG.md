@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- SPEC's field table matches the schemas: the person fields are listed, `methods` is on
+  assignments only and in the owner's words, `*_en` is `title_en` and `role_en`. `lint` checks the
+  manifest's `languages`. `schema.coerce`, which nothing called, is gone.
+
 - `INDEX.md` says under the technology table what its months are: calendar months in which an
   assignment lists the technology, breaks left out, overlaps counted once, allocation not used.
 

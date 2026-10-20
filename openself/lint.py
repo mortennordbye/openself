@@ -64,6 +64,11 @@ def lint(profile, today=None, tech_path=None):
         add("error", "openself.json", "format", "missing or not 'openself'")
     if profile.manifest.get("schema") != schema.SCHEMA_VERSION:
         add("error", "openself.json", "schema", f"this openself reads schema {schema.SCHEMA_VERSION}")
+    langs = profile.manifest.get("languages")
+    if not isinstance(langs, list) or not langs or not all(isinstance(x, str) and re.fullmatch(r"[a-z]{2}", x) for x in langs):
+        add("error", "openself.json", "languages", "a list of two-letter language codes, the main one first")
+    elif langs[0] not in schema.label_languages():
+        add("warning", "openself.json", "languages", f"no labels for '{langs[0]}', so headings are read in English")
 
     for t in schema.SINGLETONS:
         if t not in profile.entries:

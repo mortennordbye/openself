@@ -43,7 +43,7 @@
     },
     "start": {
       "type": "string",
-      "description": "First month, YYYY-MM.",
+      "description": "First month, YYYY-MM (YYYY when the month is not known).",
       "pattern": "^(|\\d{4}(-(0[1-9]|1[0-2]))?)$"
     },
     "end": {
