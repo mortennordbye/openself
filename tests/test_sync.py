@@ -135,6 +135,49 @@ class Sync(unittest.TestCase):
         self.assertEqual(len(history.log(os.path.join(b, "cv"))), 3)
         self.assertEqual(sync.status(b)["vaults"]["cv"]["here"], True)
 
+    def remote(self, home):
+        bare = os.path.join(self.tmp, "remote.git")
+        subprocess.run(["git", "init", "-q", "--bare", "-b", "main", bare], check=True)
+        subprocess.run(["git", "-C", home, "remote", "add", "origin", bare], check=True)
+        return bare
+
+    def test_push_uploads_a_snapshot_an_earlier_push_did_not_get_out(self):
+        self.start_profile(self.a)
+        bare = self.remote(self.a)
+        subprocess.run(["git", "-C", self.a, "commit", "-q", "--allow-empty", "-m", "start"], check=True)
+        subprocess.run(["git", "-C", self.a, "push", "-q", "-u", "origin", "main"], check=True)
+        sync.push(self.a, upload=False)  # committed, but not uploaded (refused, offline)
+        self.assertTrue(sync.unpublished(self.a))
+        r = sync.push(self.a)
+        self.assertTrue(r["unchanged"])  # nothing new to encrypt...
+        self.assertTrue(r["uploaded"])  # ...but the waiting commit goes out
+        self.assertFalse(sync.unpublished(self.a))
+        mine = subprocess.run(["git", "-C", self.a, "rev-parse", "HEAD"], capture_output=True, text=True).stdout
+        theirs = subprocess.run(["git", "-C", bare, "rev-parse", "main"], capture_output=True, text=True).stdout
+        self.assertEqual(mine, theirs)
+
+    def test_snapshot_branch_of_another_machine_is_not_replaced(self):
+        self.start_profile(self.a)
+        self.remote(self.a)
+        sync.push(self.a, upload=False)
+        subprocess.run(["git", "-C", self.a, "push", "-q", "-u", "origin", "main"], check=True)
+        b = os.path.join(self.tmp, "b")
+        subprocess.run(["git", "clone", "-q", os.path.join(self.tmp, "remote.git"), b], check=True)
+        self.assertEqual(sync.snapshot_branch(self.a, "main"), ("", False))
+        # Machine b pushes a snapshot branch that a does not have.
+        subprocess.run(["git", "-C", b, "commit", "-q", "--allow-empty", "-m", "b's snapshot"], check=True)
+        subprocess.run(["git", "-C", b, "push", "-q", "origin", f"HEAD:refs/heads/{sync.SNAPSHOT_BRANCH}"], check=True)
+        theirs, foreign = sync.snapshot_branch(self.a, "main")
+        self.assertTrue(theirs)
+        self.assertTrue(foreign)
+        # Once it is merged into main, a must pull before pushing again.
+        subprocess.run(["git", "-C", b, "push", "-q", "origin", "HEAD:main"], check=True)
+        with self.assertRaisesRegex(sync.SyncError, "pull"):
+            sync.snapshot_branch(self.a, "main")
+        # After pulling, the branch is a's own history: replacing it is fine.
+        subprocess.run(["git", "-C", self.a, "pull", "-q", "origin", "main"], check=True)
+        self.assertEqual(sync.snapshot_branch(self.a, "main")[1], False)
+
     def test_vault_not_here_is_left_alone(self):
         self.start_profile(self.a)
         v = sync.add_vault(self.a, "docs")

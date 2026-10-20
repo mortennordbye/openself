@@ -572,7 +572,8 @@ def push(home, commit=True, upload=True, force=False):
             run(["git", "-C", home, "commit", "-q", "-m", what, "--", *own])
             result["commit"] = git_out(home, "rev-parse", "--short", "HEAD")
             result.pop("unchanged", None)
-        if upload and git_out(home, "remote") and (result["commit"] or not result.get("unchanged")):
+        # Also upload a commit an earlier push made but did not get out (refused, offline).
+        if upload and git_out(home, "remote") and (result["commit"] or not result.get("unchanged") or unpublished(home)):
             bad = guard.unpushed(home)
             if bad:
                 raise SyncError("refusing to upload, the home repository would publish:\n  " + "\n  ".join(bad))
@@ -584,6 +585,11 @@ def push(home, commit=True, upload=True, force=False):
     return result
 
 
+def unpublished(home):
+    """Commits on HEAD that no remote has yet."""
+    return bool(git_out(home, "rev-list", "-n", "1", "HEAD", "--not", "--remotes"))
+
+
 def push_pull_request(home):
     """Push to a branch and open a pull request that GitHub merges by itself once its required
     checks pass, for a home whose main branch takes no direct pushes. A merge commit, not a
@@ -591,16 +597,41 @@ def push_pull_request(home):
     if not shutil.which("gh"):
         raise SyncError("pushing through a pull request needs the GitHub CLI: brew install gh, then gh auth login")
     base = git_out(home, "rev-parse", "--abbrev-ref", "HEAD") or "main"
-    run(["git", "-C", home, "push", "-q", "--force", "origin", f"HEAD:refs/heads/{SNAPSHOT_BRANCH}"])
 
     def gh(*args):
         return run(["gh", *args], cwd=home).decode().strip()
+    theirs, foreign = snapshot_branch(home, base)
     url = gh("pr", "list", "--head", SNAPSHOT_BRANCH, "--state", "open", "--json", "url", "--jq", ".[0].url")
+    if url and foreign:
+        raise SyncError(f"another machine's snapshot is waiting in {url}. Let it merge, run `openself pull`, then push again")
+    # The lease: if the branch moved since we looked, the push fails instead of replacing it.
+    lease = f"--force-with-lease=refs/heads/{SNAPSHOT_BRANCH}:{theirs}"
+    run(["git", "-C", home, "push", "-q", lease, "origin", f"HEAD:refs/heads/{SNAPSHOT_BRANCH}"])
     if not url:
         url = gh("pr", "create", "--base", base, "--head", SNAPSHOT_BRANCH, "--title", "Encrypted profile snapshot",
                  "--body", "Made by `openself push`. GitHub merges it once the guard check passes.").splitlines()[-1]
     gh("pr", "merge", url, "--auto", "--merge")
     return url
+
+
+def remote_head(home, branch):
+    out = run(["git", "-C", home, "ls-remote", "origin", f"refs/heads/{branch}"]).decode().split()
+    return out[0] if out else ""
+
+
+def snapshot_branch(home, base):
+    """Before force-pushing the snapshot branch: refuse when the remote main has commits this home
+    lacks (pull first). Returns the branch's remote commit ("" when there is none) and whether it
+    holds work this home lacks (another machine's snapshot)."""
+    run(["git", "-C", home, "fetch", "-q", "origin", base])
+    if git_out(home, "rev-list", "-n", "1", "HEAD..FETCH_HEAD"):
+        raise SyncError(f"the remote {base} has snapshots this machine does not: run `openself pull` first")
+    theirs = remote_head(home, SNAPSHOT_BRANCH)
+    if not theirs:
+        return "", False
+    run(["git", "-C", home, "fetch", "-q", "origin", f"refs/heads/{SNAPSHOT_BRANCH}"])
+    mine = subprocess.run(["git", "-C", home, "merge-base", "--is-ancestor", theirs, "HEAD"]).returncode == 0
+    return theirs, not mine
 
 
 def pull_folder(home, name, path):
