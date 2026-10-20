@@ -10,6 +10,8 @@ from . import index, model, schema
 
 STALE_MONTHS = 18
 GAP_MONTHS = 3
+# A source cited inline, left from before the profile itself was the source.
+INLINE_SOURCE = re.compile(r"\[(?:kilde|source)\s*:", re.IGNORECASE)
 
 
 @dataclass
@@ -74,6 +76,7 @@ def lint(profile, today=None, tech_path=None):
         check_entry(e, profile, employments, canon, alias, now, add)
 
     check_overlaps(profile, add)
+    check_employment_overlaps(employments, add)
     check_gaps(employments, now, add)
 
     if index.stale(profile):
@@ -110,6 +113,20 @@ def check_entry(e, profile, employments, canon, alias, now, add):
     for s in secs:
         if not s.known and s.id != "_intro":
             add("warning", e.id, "", f"unknown section heading '## {s.heading}' (allowed, but not one of the standard sections)")
+    n = len(INLINE_SOURCE.findall(e.body))
+    if n:
+        add("warning", e.id, "", f"{n} inline source marker{'s' if n > 1 else ''} ('[kilde: ...]'); the profile is "
+                                 "the source and history says who wrote what, so drop them")
+
+    if t == "person":
+        if not e.get("name"):
+            add("warning", e.id, "name", "the person has no name")
+        for k in ("title", "languages"):
+            if not e.get(k) and not e.list(k):
+                add("prompt", e.id, k, "not given")
+        about = next((s for s in secs if s.id == "about"), None)
+        if about is None or not about.text.strip():
+            add("prompt", e.id, "", "no about text written")
 
     if t in ("employment", "assignment"):
         a, b = model.month(e.get("start")), model.month(e.get("end"), end=True)
@@ -129,6 +146,9 @@ def check_entry(e, profile, employments, canon, alias, now, add):
             if name not in canon:
                 hint = alias.get(name.lower())
                 add("warning", e.id, "tech", f"'{name}' is not a canonical name" + (f"; use '{hint}'" if hint else ""))
+        quiet = [n for n in e.list("tech") if not mentioned(n, e.body, alias)]
+        if quiet:
+            add("prompt", e.id, "tech", "not mentioned in the text, so what was done with it is unknown: " + ", ".join(quiet))
         if e.get("confidence") == "needs-confirmation":
             add("prompt", e.id, "confidence", "needs confirmation from the owner")
         reviewed = model.month(e.get("last_reviewed")[:7]) if e.get("last_reviewed") else None
@@ -156,6 +176,38 @@ def check_entry(e, profile, employments, canon, alias, now, add):
         contribution = next((s for s in secs if s.id == "contribution"), None)
         if contribution is None or not contribution.text.strip():
             add("prompt", e.id, "", "no own contribution written")
+
+
+def mentioned(name, text, alias):
+    """Whether the text names the technology, by its canonical name or an alias, as a whole word."""
+    words = {name.lower()} | {a for a, c in alias.items() if c == alias.get(name.lower(), name)}
+    low = text.lower()
+    # A version number may follow (RHEL9), a letter may not (Java is not JavaScript).
+    return any(re.search(r"(?<![\w.])" + re.escape(w) + r"(?![^\W\d_])", low) for w in words)
+
+
+def check_employment_overlaps(employments, add):
+    """Employments in the same months (breaks left out): two jobs at once, or a missing break. A
+    single shared month is a handover (one ends the month the other starts) and is not reported."""
+    items = sorted((e for e in employments.values() if not e.error), key=lambda e: e.id)
+    for i, a in enumerate(items):
+        for b in items[i + 1:]:
+            both = sorted(model.months(a) & model.months(b))
+            runs = [r for r in runs_of(both) if len(r) > 1]
+            if runs:
+                when = ", ".join(f"{model.ym(r[0])} to {model.ym(r[-1])}" for r in runs)
+                add("prompt", a.id, "", f"overlaps {b.id} ({when}): two jobs at once, or a missing break?")
+
+
+def runs_of(months):
+    """Sorted month numbers split into runs of consecutive months."""
+    out = []
+    for m in months:
+        if out and m == out[-1][-1] + 1:
+            out[-1].append(m)
+        else:
+            out.append([m])
+    return out
 
 
 def check_overlaps(profile, add):

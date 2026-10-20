@@ -222,11 +222,13 @@ of its own, even a public one, publish it encrypted with every version inside (s
 - **error**: the file breaks the format (bad frontmatter or field, id not matching the file name,
   duplicate id, end before start, unknown employment, malformed flag).
 - **warning**: probably a mistake (period outside the employment, more than 100% allocation at
-  once, a tech name that is not canonical, unknown heading, stale `INDEX.md`).
+  once, a tech name that is not canonical, unknown heading, stale `INDEX.md`, a source cited
+  inline as `[kilde: ...]` or `[source: ...]`).
 - **prompt**: a gap worth asking the owner about (open questions and conflicts, unknown customer
-  naming, missing role, allocation, team size or own contribution, gaps of more than three
-  months between employments, entries not reviewed in 18 months). The prompts are the interview
-  list.
+  naming, missing role, allocation, team size or own contribution, a technology in `tech` that
+  the text never names, employments that share more than one month, the person's missing title,
+  languages or about text, gaps of more than three months between employments, entries not
+  reviewed in 18 months). The prompts are the interview list.
 
 ## 6. Changing the format
 
