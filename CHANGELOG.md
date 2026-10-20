@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `INDEX.md` says under the technology table what its months are: calendar months in which an
+  assignment lists the technology, breaks left out, overlaps counted once, allocation not used.
+
 - `push` uploads a snapshot an earlier push committed but did not get out (refused, offline),
   instead of waiting for the next change. In a pull-request home it no longer replaces another
   machine's waiting snapshot branch, and asks for a pull when the remote main is ahead.

@@ -40,6 +40,8 @@ Seniorkonsulent · norsk (morsmål), engelsk (flytende) · Sikkerhetsklarering: 
 | GitHub Actions | 12 | 2022-01-intern-plattformkode |
 | Go | 12 | 2022-01-intern-plattformkode |
 
+mnd: kalendermåneder der minst ett oppdrag har teknologien i `tech`. Pauser er tatt ut, oppdrag som overlapper telles én gang, og stillingsprosent er ikke med. + betyr pågående, telt til siste gjennomgang.
+
 ## Åpne spørsmål og konflikter
 
 - 2017-09-driftsportefolje-driftstekniker · spørsmål: Hvor mange var dere i driftsteamet?

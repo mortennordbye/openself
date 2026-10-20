@@ -70,6 +70,7 @@
     "open": "Åpne spørsmål og konflikter",
     "removed": "Fjernede oppføringer",
     "months": "mnd",
+    "months_note": "mnd: kalendermåneder der minst ett oppdrag har teknologien i `tech`. Pauser er tatt ut, oppdrag som overlapper telles én gang, og stillingsprosent er ikke med. + betyr pågående, telt til siste gjennomgang.",
     "period": "Periode",
     "id": "Id",
     "top_tech": "Teknologi",
