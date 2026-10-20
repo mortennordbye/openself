@@ -156,15 +156,19 @@ def strings(view):
 
 def hidden(profile):
     """Values the public view must never contain: the names of customers the profile keeps hidden
-    (nda or anonymised), and the private reference sections. A tool can check its output for them."""
-    out = set()
+    (nda, anonymised or not decided, and named as public by no other entry), and the private
+    reference sections. A tool can check its output for them."""
+    named, out = set(), set()
     for e in profile.of_type("assignment"):
-        if e.get("customer_public") != "public":
-            out |= {c for c in [e.get("customer")] + e.list("customers") if c}
+        names = {c for c in [e.get("customer")] + e.list("customers") if c}
+        if e.get("customer_public") == "public":
+            named |= {c.lower() for c in names}
+        else:
+            out |= names
         for s in model.sections(e.body, e.type):
             if s.id == "reference":
                 out |= {ln.strip(" -*") for ln in s.text.split("\n") if len(ln.strip(" -*")) > 3}
-    return sorted(out, key=lambda s: (-len(s), s))
+    return sorted((h for h in out if h.lower() not in named), key=lambda s: (-len(s), s))
 
 
 def leaks(text, profile):
