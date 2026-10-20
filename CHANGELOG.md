@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Every answer saved in the web app also becomes a request (`ANSWER #N`) for a watching assistant,
+  which carries the answer into the entry where it settles something and asks when it is unclear.
+
 - The web app talks to an assistant: "Ask about this" and "Ask me about this" store a request,
   `openself assistant watch` prints them for an assistant session (Claude Code or another) and
   keeps a heartbeat, and an AI chip in the header shows whether one is connected, with the steps to

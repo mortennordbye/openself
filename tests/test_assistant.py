@@ -68,6 +68,19 @@ class Assistant(unittest.TestCase):
         self.assertEqual(api.assistant_state(self.root)[1]["items"], [])
         self.assertEqual(api.requeststatus(self.root, {"n": "1", "status": "done"})[0], 400)
 
+    def test_an_answer_in_the_web_app_reaches_the_assistant(self):
+        rel = "assignments/2021-04-vestkraft-skymigrering.md"
+        with open(os.path.join(self.root, rel), encoding="utf-8") as f:
+            text = f.read()
+        raw = next(ln for ln in text.split("\n") if "⚑ konflikt:" in ln or "⚑ conflict:" in ln)
+        code, j = api.flag(self.root, {"id": "2021-04-vestkraft-skymigrering", "raw": raw, "answer": "60, den gamle CV-en tok feil",
+                                       "base_sha": __import__("openself").model.sha(text)})
+        self.assertEqual(code, 200, j)
+        i = assistant.load(self.root)[-1]
+        self.assertEqual((i["kind"], i["entry"], i["comment"]), ("answer", "2021-04-vestkraft-skymigrering", "60, den gamle CV-en tok feil"))
+        self.assertIn("50 servere", i["quote"])
+        self.assertTrue(assistant.line(i).startswith("ANSWER #1 entry=2021-04-vestkraft-skymigrering"))
+
     def test_cli(self):
         env = dict(os.environ, PYTHONPATH=ROOT)
         assistant.add(self.root, "person", "x")
