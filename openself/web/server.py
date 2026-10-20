@@ -12,7 +12,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from .. import sync
+from .. import assistant, sync
 from . import api
 
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -86,6 +86,12 @@ def make_handler(root, port, home):
                 code, body = fn(root)
                 if code == 404:
                     body["path"] = os.path.abspath(root)
+                return self.json(code, body)
+            if name == "assistant":
+                code, body = fn(root)
+                # How to connect one: `make ai` in a home folder, else the watch command by hand.
+                watch = "./self assistant watch" if home else f"python3 -m openself assistant watch {root}"
+                body.update(home=home or "", command="make ai" if home else "", prompt=assistant.prompt(watch))
                 return self.json(code, body)
             args = {"log": [q.get("id", "")], "show": [q.get("id", ""), q.get("rev", "")], "asof": [q.get("date", "")]}.get(name, [])
             self.json(*fn(root, *args))

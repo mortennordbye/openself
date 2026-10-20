@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- The web app talks to an assistant: "Ask about this" and "Ask me about this" store a request,
+  `openself assistant watch` prints them for an assistant session (Claude Code or another) and
+  keeps a heartbeat, and an AI chip in the header shows whether one is connected, with the steps to
+  connect one and the list of requests. `openself assistant list` and `done N --note` manage them.
+  Requests live in the profile's `.git` folder, never in its history.
+
 - `tech-names.txt`: more Azure services, Kubernetes add-ons, observability, identity and
   security tools, mail and proxy servers, and a storage and backup section.
 

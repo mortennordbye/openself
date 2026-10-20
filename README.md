@@ -34,6 +34,19 @@ questions and gaps. You can edit fields and text, add and remove entries, answer
 a word diff, restore an old version and view the profile as it was on any date. Everything you save
 is a commit. It works in English and Norwegian, following the profile's language.
 
+**An assistant next to it.** "Ask about this" on an entry, "Ask me about this" on an open question,
+and "Save and ask me" on a new entry store a request for an assistant such as Claude Code. Run
+
+```
+python3 -m openself assistant watch path/to/profile
+```
+
+as a background monitor in the assistant's session (in a home folder, `make ai` starts Claude Code
+already told to). It prints each request, and the AI chip in the header turns green while it runs.
+The assistant interviews you in its own window, writes your answers into the profile in your words,
+and marks the request done (`openself assistant done N --note "..."`). Requests are kept in the
+profile's `.git` folder, so they are never committed or pushed.
+
 ```
 python3 -m openself import path/to/profile https://www.credly.com/users/<you> --dry-run
 ```

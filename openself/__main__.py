@@ -32,6 +32,12 @@
                                                   PDFs), versioned with git and pushed encrypted as NAME.age
   vault list [HOME]                               the vaults, and whether each has changes to push
 
+  assistant watch [DIR]                           for an assistant session (Claude Code or another), as a
+                                                  background monitor: prints each request from the web app
+                                                  and tells the web app an assistant is connected
+  assistant list [DIR]                            the requests and their status
+  assistant done N [DIR] [--note TEXT]            mark request N done, with what changed
+
 In a home folder (one with .openself/), DIR defaults to its profile/ and HOME to the home.
 """
 
@@ -40,7 +46,7 @@ import sys
 
 import os
 
-from . import export, guard, history, importer, index, lint, model, sync, write
+from . import assistant, export, guard, history, importer, index, lint, model, sync, write
 
 
 def main(argv=None):
@@ -76,6 +82,8 @@ def main(argv=None):
     p = sub.add_parser("trust"); p.add_argument("dir", nargs="?"); p.add_argument("--yes", action="store_true")
     p = sub.add_parser("vault"); p.add_argument("action", choices=["add", "list"])
     p.add_argument("args", nargs="*", help="add: NAME [HOME]; list: [HOME]")
+    p = sub.add_parser("assistant"); p.add_argument("action", choices=["watch", "list", "done"])
+    p.add_argument("args", nargs="*", help="watch|list: [DIR]; done: N [DIR]"); p.add_argument("--note")
     a = ap.parse_args(argv)
 
     if a.cmd == "guard":
@@ -140,6 +148,8 @@ def main(argv=None):
             print(e, file=sys.stderr)
             return 1
         return 0
+    if a.cmd == "assistant":
+        return run_assistant(a)
     if a.cmd in ("serve", "keys", "push", "pull"):
         home = sync.find_home(a.dir or ".")
         try:
@@ -267,6 +277,40 @@ def make_home(path):
         import subprocess
         subprocess.run(["git", "init", "-q", "-b", "main", path], check=True)
     return f"home ready in {path}; next: openself keys, then openself serve"
+
+
+def run_assistant(a):
+    args = list(a.args)
+    n = None
+    if a.action == "done":
+        if not args or not args[0].isdigit():
+            print("usage: openself assistant done N [DIR] [--note TEXT]", file=sys.stderr)
+            return 1
+        n = int(args.pop(0))
+    home = sync.find_home(args[0] if args else ".")
+    root = args[0] if args and not (home and os.path.abspath(args[0]) == home) else (sync.profile_dir(home) if home else ".")
+    if not os.path.isfile(os.path.join(root, model.MANIFEST)):
+        print(f"no profile in {os.path.abspath(root)}", file=sys.stderr)
+        return 1
+    if a.action == "watch":
+        import signal
+        signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))  # so the heartbeat is removed when stopped
+        assistant.watch(root)
+    elif a.action == "list":
+        items = assistant.load(root)
+        for i in items:
+            print(f"#{i['n']:<3} {i['status']:<8} {i['time'][:16].replace('T', ' ')}  {i.get('entry') or '(profile)'}: "
+                  f"{i.get('comment') or ''}" + (f"  -> {i['note']}" if i.get("note") else ""))
+        if not items:
+            print("no requests")
+    else:
+        try:
+            assistant.set_status(root, n, "done", a.note)
+        except ValueError as e:
+            print(e, file=sys.stderr)
+            return 1
+        print(f"request #{n} done")
+    return 0
 
 
 def run_import(root, urls, dry_run):
