@@ -292,3 +292,11 @@ A profile holds personal data and often confidential customer details. It lives 
 machine by default. Sharing or publishing it is the owner's choice, and a tool that exports from
 it leaves out `reference` sections, `nda` customers and anything flagged `omit` unless the owner
 says otherwise. When the owner leaves or asks, the whole folder and its history are deleted.
+
+The library's **public view** (`openself export`, `export.public_view`) applies these rules once,
+so every output (a CV, a portfolio site, a form) shows the same things: it drops `nda`
+assignments, shows customers as `customer_public` allows, copies only the `about`, `summary`,
+`challenge`, `contribution` and `outcome` sections, keeps only the facts of an entry flagged
+`omit`, and gives each entry a `slug` for public pages, since an id can hold a customer's name.
+A tool that publishes checks its output against `export.hidden` (hidden customer names and the
+`reference` sections) before anything leaves the machine.
