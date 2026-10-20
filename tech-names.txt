@@ -23,6 +23,12 @@ OpenStack
 VMware vSphere | vsphere, vmware, esxi
 Hyper-V | hyperv
 Proxmox | proxmox ve
+Azure Key Vault | key vault, akv
+Azure SQL | azure sql database
+Azure Storage | storage account, azure blob storage
+Azure Container Apps | container apps
+Azure Update Manager | update manager
+ExpressRoute | azure expressroute
 
 # Containers and orchestration
 Kubernetes | k8s, kube
@@ -42,6 +48,11 @@ Cilium
 Talos Linux | talos
 Rancher
 k3s
+KEDA
+External Secrets Operator | external secrets, eso
+External DNS | externaldns, external-dns
+Flannel
+Harbor
 
 # Infrastructure as code and configuration
 Terraform | tf
@@ -55,6 +66,7 @@ Chef
 Packer
 Crossplane
 CloudFormation | aws cloudformation
+Terraform Cloud | hcp terraform
 
 # CI/CD and source control
 GitHub Actions | gh actions
@@ -65,6 +77,7 @@ Git
 GitHub
 GitLab
 Bitbucket
+Octopus Deploy | octopus
 
 # Observability
 Prometheus
@@ -79,6 +92,10 @@ Zabbix
 Nagios
 PagerDuty
 Azure Application Insights | application insights, app insights
+Fluent Bit | fluentbit, fluent-bit
+Telegraf
+TICK | tick stack
+Sumo Logic | sumologic
 
 # Operating systems
 Linux
@@ -135,6 +152,8 @@ FastAPI
 Spring Boot | spring
 REST | rest api, restful
 GraphQL
+IIS | internet information services
+WeasyPrint
 
 # Security and identity
 HashiCorp Vault | vault
@@ -145,6 +164,12 @@ cert-manager
 Trivy
 SonarQube | sonar
 Microsoft Defender for Cloud | defender for cloud
+Active Directory | microsoft active directory
+FreeIPA | ipa, red hat idm
+RSA Authentication Manager | rsa securid
+Tenable | nessus, tenable.io, tenable.sc
+Wazuh
+Mnemonic SIEM
 
 # Networking
 TCP/IP | tcp, ip
@@ -158,6 +183,9 @@ Fortinet | fortigate
 F5 BIG-IP | f5, big-ip
 HAProxy
 Cloudflare
+Cisco firewall | cisco asa
+Squid | squid proxy
+Postfix
 
 # Collaboration and work management
 Jira
@@ -166,3 +194,7 @@ ServiceNow
 TOPdesk
 Microsoft Teams | teams
 Slack
+
+# Storage and backup
+NetApp | netapp ontap
+Rubrik

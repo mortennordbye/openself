@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `tech-names.txt`: more Azure services, Kubernetes add-ons, observability, identity and
+  security tools, mail and proxy servers, and a storage and backup section.
+
 - SPEC's field table matches the schemas: the person fields are listed, `methods` is on
   assignments only and in the owner's words, `*_en` is `title_en` and `role_en`. `lint` checks the
   manifest's `languages`. `schema.coerce`, which nothing called, is gone.
