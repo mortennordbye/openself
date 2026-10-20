@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `push` uploads a snapshot an earlier push committed but did not get out (refused, offline),
+  instead of waiting for the next change. In a pull-request home it no longer replaces another
+  machine's waiting snapshot branch, and asks for a pull when the remote main is ahead.
+
 - The public view: `openself export` and `export.public_view` give what a tool may show to others
   (spec section 8) as JSON, so a CV and a portfolio site leave out the same things. `export.leaks`
   checks generated output for hidden customer names and reference sections. `names=False` (and
