@@ -320,6 +320,29 @@ class IndexAndLint(Tmp):
         self.assertTrue(self.has(issues, "warning", "", "unknown section heading"))
         self.assertTrue(self.has(issues, "error", "", "malformed flag"))
 
+    def test_inline_sources_and_quiet_tech(self):
+        a = "assignments/2021-04-vestkraft-skymigrering.md"
+        body = "## Eget bidrag\n\nFlyttet 60 servere med Terraform til RHEL9 i Azure. [kilde: intervju]\n"
+        issues = self.lint_with(a, {"tech": ["Azure", "Terraform", "Red Hat Enterprise Linux", "Azure DevOps", "Java"]}, body)
+        self.assertTrue(self.has(issues, "warning", "", "1 inline source marker"))
+        quiet = next(msg for lv, i, f, msg in issues if lv == "prompt" and f == "tech" and i == a[12:-3])
+        self.assertTrue(quiet.endswith(": Azure DevOps, Java"), quiet)  # RHEL9 names Red Hat Enterprise Linux
+
+    def test_person_rules(self):
+        issues = self.lint_with("person.md", {"title": "", "languages": []}, "## Om meg\n\n")
+        self.assertTrue(self.has(issues, "prompt", "title", "not given"))
+        self.assertTrue(self.has(issues, "prompt", "languages", "not given"))
+        self.assertTrue(self.has(issues, "prompt", "", "no about text"))
+
+    def test_employment_overlaps(self):
+        e = "employments/2021-03-fjordsky-seniorkonsulent.md"
+        issues = self.lint_with(e, {"start": "2020-12"})  # one shared month: a handover
+        self.assertFalse(any("overlaps" in msg for _, _, _, msg in issues))
+        shutil.rmtree(self.root)
+        issues = self.lint_with(e, {"start": "2020-10"})
+        self.assertTrue(any(lv == "prompt" and "overlaps" in msg and "2020-10 to 2020-12" in msg
+                            for lv, _, _, msg in issues), issues)
+
     def test_parse_error_and_id_mismatch(self):
         issues = self.lint_with("assignments/2021-04-vestkraft-skymigrering.md", text="---\na: b: c\n---\n")
         self.assertTrue(any(lv == "error" and "line 2" in msg for lv, _, _, msg in issues))
