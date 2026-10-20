@@ -4,7 +4,8 @@
 
 - The public view: `openself export` and `export.public_view` give what a tool may show to others
   (spec section 8) as JSON, so a CV and a portfolio site leave out the same things. `export.leaks`
-  checks generated output for hidden customer names and reference sections.
+  checks generated output for hidden customer names and reference sections. `names=False` (and
+  `openself export --no-names`) hides every real customer name behind the alias or sector.
 
 - Vaults: a home can keep more folders of any files (documents, images, PDFs), each its own git
   repository, declared with `vaults = ...` in `.openself/config` and encrypted into `<name>.age`

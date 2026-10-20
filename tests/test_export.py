@@ -95,6 +95,35 @@ class PublicView(unittest.TestCase):
         self.assertNotIn("Eksempel Bygg AS", export.hidden(profile))
         self.assertIn("Fiktiv Regnskap AS", export.hidden(profile))
 
+    def test_without_names(self):
+        view = export.public_view(self.profile, names=False, lang="en")
+        a = {a["id"]: a for a in view["assignments"]}
+        self.assertEqual(a["2023-09-statens-testverk-plattformingenior"]["customer"], "en statlig etat")  # the alias
+        self.assertEqual(a["2023-09-statens-testverk-plattformingenior"]["slug"], "2023-09-plattformingenior")
+        self.assertEqual(a["2021-04-vestkraft-skymigrering"]["customer"], "et regionalt kraftselskap")
+        self.assertEqual(a["2022-01-intern-plattformkode"]["slug"], "2022-01-intern-plattformkode")
+        hidden = export.hidden(self.profile, names=False)
+        self.assertIn("Statens testverk", hidden)
+        self.assertNotIn("Fjordsky AS", hidden)  # an employer, shown anyway
+        public = json.dumps([{k: v for k, v in x.items() if k != "id"} for x in view["assignments"]], ensure_ascii=False)
+        self.assertEqual(export.leaks(public, self.profile, names=False), [])
+        self.assertTrue(view["names"] is False and "Statens testverk" not in public)
+
+    def test_without_alias_the_sector_or_count(self):
+        path = os.path.join(self.dir, "assignments", "2017-09-driftsportefolje-driftstekniker.md")
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text.replace("customer_alias: fem små og mellomstore bedrifter", "customer_alias:"))
+        path = os.path.join(self.dir, "assignments", "2021-04-vestkraft-skymigrering.md")
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text.replace("customer_alias: et regionalt kraftselskap", "customer_alias:"))
+        a = {a["id"]: a for a in export.public_view(model.load_profile(self.dir), names=False, lang="en")["assignments"]}
+        self.assertEqual(a["2017-09-driftsportefolje-driftstekniker"]["customer"], "5 customers")
+        self.assertEqual(a["2021-04-vestkraft-skymigrering"]["customer"], "energi")
+
     def test_tables(self):
         self.assertEqual(self.view["certifications"][0]["name"], "Certified Kubernetes Administrator (CKA)")
         self.assertEqual(set(self.view["education"][0]), {"degree", "school", "from", "to"})

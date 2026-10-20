@@ -298,5 +298,8 @@ so every output (a CV, a portfolio site, a form) shows the same things: it drops
 assignments, shows customers as `customer_public` allows, copies only the `about`, `summary`,
 `challenge`, `contribution` and `outcome` sections, keeps only the facts of an entry flagged
 `omit`, and gives each entry a `slug` for public pages, since an id can hold a customer's name.
+`customer_public` says what may be named at all; an output can still hide every real name (the
+view's `names` switch), showing `customer_alias`, else `sector`. Tools let the owner turn this on
+and off per output, and a tool that publishes to everyone (a website) hides names by default.
 A tool that publishes checks its output against `export.hidden` (hidden customer names and the
 `reference` sections) before anything leaves the machine.
