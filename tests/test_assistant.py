@@ -22,6 +22,9 @@ GIT_ENV = {"GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "test@example.invalid"
 
 class Assistant(unittest.TestCase):
     def setUp(self):
+        env = dict(os.environ)
+        self.addCleanup(lambda: (os.environ.clear(), os.environ.update(env)))
+        os.environ.update(GIT_ENV)  # the web API commits in this process; CI has no git identity
         self.tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.tmp)
         self.root = os.path.join(self.tmp, "p")
