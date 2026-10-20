@@ -98,17 +98,3 @@ def check_string(v, p):
         return "wrong format"
     return None
 
-
-def coerce(meta, type_):
-    """Typed copy of meta: integers for x-coerce fields (None when empty), lists for list fields."""
-    props = load(type_)["properties"]
-    out = {}
-    for k, v in meta.items():
-        p = props.get(k, {})
-        if p.get("x-coerce") == "integer":
-            out[k] = int(v) if isinstance(v, str) and v.isdigit() else None
-        elif p.get("type") == "array":
-            out[k] = v if isinstance(v, list) else ([] if v == "" else [v])
-        else:
-            out[k] = v
-    return out
