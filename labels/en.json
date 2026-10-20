@@ -70,6 +70,7 @@
     "open": "Open questions and conflicts",
     "removed": "Removed entries",
     "months": "mo",
+    "months_note": "mo: calendar months in which at least one assignment lists the technology in `tech`. Breaks are left out, overlapping assignments count once, and allocation is not taken into account. + means ongoing, counted up to the last review.",
     "period": "Period",
     "id": "Id",
     "top_tech": "Technology",

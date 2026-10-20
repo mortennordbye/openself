@@ -92,6 +92,7 @@ def build_index(profile):
     for t in sorted(ev, key=lambda t: (-len(ev[t][0]), t.lower())):
         months, ids, ongoing_ids = ev[t]
         out.append(f"| {cell(t)} | {len(months)}{'+' if ongoing_ids else ''} | {', '.join(sorted(ids, reverse=True))} |")
+    out += ["", ix["months_note"]]
 
     out += ["", f"## {ix['open']}", ""]
     items = open_items(profile)
