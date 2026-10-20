@@ -132,6 +132,7 @@ python3 -m openself init my-profile --owner "Kari Nordmann" --lang nb,en
 python3 -m openself new my-profile employment employer="Acme AS" title=Utvikler start=2024-01 end=ongoing
 python3 -m openself lint my-profile
 python3 -m openself log my-profile
+python3 -m openself export my-profile     # the public view, as JSON, for a CV or a site
 ```
 
 Run it from this folder, or add the repository to another project and put it on `PYTHONPATH`:

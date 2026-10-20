@@ -11,6 +11,7 @@
   show DIR ID REV                                 an entry as it was at a revision
   restore DIR ID REV [--actor ...]                bring an old version back as a new commit
   as-of DIR DATE                                  the index as the profile was on DATE (YYYY-MM-DD)
+  export DIR                                      the public view as JSON: what a CV or site may show
   import DIR [URL ...] [--dry-run]                certifications from a Credly profile or a Microsoft
                                                   Learn transcript link (default: the stored links)
 
@@ -38,7 +39,7 @@ import sys
 
 import os
 
-from . import guard, history, importer, index, lint, model, sync, write
+from . import export, guard, history, importer, index, lint, model, sync, write
 
 
 def main(argv=None):
@@ -61,6 +62,7 @@ def main(argv=None):
     p = sub.add_parser("restore"); p.add_argument("dir"); p.add_argument("id"); p.add_argument("rev")
     p.add_argument("--actor", default="owner", choices=history.ACTORS)
     p = sub.add_parser("as-of"); p.add_argument("dir"); p.add_argument("date")
+    p = sub.add_parser("export"); p.add_argument("dir")
     p = sub.add_parser("import"); p.add_argument("dir"); p.add_argument("urls", nargs="*"); p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("serve"); p.add_argument("dir", nargs="?"); p.add_argument("--port", type=int, default=8765)
     p.add_argument("--no-browser", action="store_true")
@@ -234,6 +236,9 @@ def main(argv=None):
             return 1
         print(f"<!-- as of {a.date}: {rev[:7]} -->")
         print(index.build_index(history.load_at(a.dir, rev)))
+    elif a.cmd == "export":
+        import json
+        print(json.dumps(export.public_view(model.load_profile(a.dir)), ensure_ascii=False, indent=2))
     return 0
 
 
