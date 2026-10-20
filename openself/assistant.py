@@ -61,19 +61,25 @@ def _store(root, items):
     os.replace(tmp, requests_file(root))
 
 
-def add(root, entry="", comment="", quote=""):
+KINDS = ("interview", "answer")
+
+
+def add(root, entry="", comment="", quote="", kind="interview"):
     """Store a request about an entry ("" for the whole profile). The same open request again is
-    not stored twice. Returns the request."""
+    not stored twice. Returns the request. kind "answer": the owner answered a question in the web
+    app (comment is the answer, quote the question), for the assistant to carry into the entry."""
+    if kind not in KINDS:
+        raise ValueError("kind must be one of " + ", ".join(KINDS))
     entry, comment, quote = entry.strip(), " ".join(comment.split())[:2000], " ".join(quote.split())[:1500]
     if entry and not model.find(root, entry):
         raise ValueError(f"no entry with id '{entry}'")
     with _lock:
         items = load(root)
         for i in items:
-            if i.get("status") == "open" and (i.get("entry"), i.get("comment"), i.get("quote")) == (entry, comment, quote):
+            if i.get("status") == "open" and (i.get("kind", "interview"), i.get("entry"), i.get("comment"), i.get("quote")) == (kind, entry, comment, quote):
                 return i
         item = {"n": max([i.get("n", 0) for i in items] + [0]) + 1, "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                "entry": entry, "file": model.find(root, entry) if entry else "", "comment": comment, "quote": quote,
+                "kind": kind, "entry": entry, "file": model.find(root, entry) if entry else "", "comment": comment, "quote": quote,
                 "status": "open", "note": ""}
         items.append(item)
         _store(root, items)
@@ -110,9 +116,13 @@ def state(root, now=None):
 def line(i, prefix=""):
     """One line per request: what a watching assistant sees as a notification."""
     where = f"entry={i['entry']} file={i.get('file') or '?'}" if i.get("entry") else "the whole profile"
+    done = f"(AGENTS.md; mark it done with: openself assistant done {i['n']} --note '<what changed>')"
+    if i.get("kind") == "answer":
+        return (f"{prefix}ANSWER #{i['n']} {where}: the owner answered «{i.get('quote', '')[:300]}» with «{i.get('comment', '')}». "
+                f"The answer is saved in the flag; carry it into the entry where it settles something (a field, a date, "
+                f"the text), ask if it is unclear {done}")
     about = f" | about: {i['quote'][:200]}" if i.get("quote") else ""
-    return (f"{prefix}REQUEST #{i['n']} {where}: {i.get('comment') or 'interview me about it'}{about} "
-            f"(AGENTS.md; mark it done with: openself assistant done {i['n']} --note '<what changed>')")
+    return f"{prefix}REQUEST #{i['n']} {where}: {i.get('comment') or 'interview me about it'}{about} {done}"
 
 
 def watch(root, out=None, interval=1.0, rounds=None):

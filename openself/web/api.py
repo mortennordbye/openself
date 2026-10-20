@@ -248,7 +248,11 @@ def flag(root, d, actor="owner"):
             e.meta["last_reviewed"] = model.today()
             new_text = write.render(e.meta, e.body, model.type_for(rel))
         write.write_atomic(os.path.join(root, rel), new_text, expected_sha=model.sha(text))
-        return finish(root, id_, "question answered", actor)
+        out = finish(root, id_, "question answered", actor)
+    # The assistant hears about every answer, to carry it into the entry (openself assistant watch).
+    flag_text = re.sub(r"^\s*-\s*⚑\s*", "", str(d.get("raw", "")))
+    assistant.add(root, id_, str(d.get("answer", "")), flag_text, kind="answer")
+    return out
 
 
 @guarded

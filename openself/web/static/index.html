@@ -97,17 +97,17 @@ const host = {
 };
 const AI = {
   en: { on: 'AI connected', off: 'No AI connected', title: 'Assistant', sent: 'Sent to the assistant', queued: 'Saved. No assistant is connected yet: click the AI chip to connect one.',
-        lead: 'Requests from "Ask about this" wait here until an assistant (Claude Code or another) picks them up. It interviews you in its own window and writes your answers into the profile.',
+        lead: 'Requests from "Ask about this", and every answer you save, wait here until an assistant (Claude Code or another) picks them up. It interviews you in its own window, writes your answers into the profile and carries an answer into the entry where it settles something.',
         step1: 'Open a terminal in the home folder', step2: 'Start Claude Code, already told to watch the requests', other: 'Or tell another assistant, in this folder:',
         prompt: 'Tell an assistant, in a terminal next to the profile:', waiting: 'Waiting for an assistant to connect ...', nowOn: 'Connected',
         none: 'No requests yet. Use "Ask about this" on an entry or a question.', whole: 'the whole profile', seen: 'Seen by the assistant', wait: 'Waiting',
-        done: 'Mark done', reopen: 'Open again', archive: 'Remove from the list', copy: 'Copy', copied: 'Copied', since: 'connected since {t}' },
+        done: 'Mark done', reopen: 'Open again', archive: 'Remove from the list', copy: 'Copy', copied: 'Copied', since: 'connected since {t}', answered: 'Your answer' },
   nb: { on: 'AI tilkoblet', off: 'Ingen AI tilkoblet', title: 'Assistent', sent: 'Sendt til assistenten', queued: 'Lagret. Ingen assistent er tilkoblet ennå: klikk på AI-knappen for å koble til.',
-        lead: 'Forespørsler fra «Be om intervju» venter her til en assistent (Claude Code eller en annen) tar dem. Den intervjuer deg i sitt eget vindu og skriver svarene dine inn i profilen.',
+        lead: 'Forespørsler fra «Be om intervju», og hvert svar du lagrer, venter her til en assistent (Claude Code eller en annen) tar dem. Den intervjuer deg i sitt eget vindu, skriver svarene dine inn i profilen og retter oppføringen der et svar avgjør noe.',
         step1: 'Åpne en terminal i hjemmemappen', step2: 'Start Claude Code, som allerede er bedt om å følge med på forespørslene', other: 'Eller si dette til en annen assistent, i denne mappen:',
         prompt: 'Si dette til en assistent, i en terminal ved profilen:', waiting: 'Venter på at en assistent kobler til ...', nowOn: 'Tilkoblet',
         none: 'Ingen forespørsler ennå. Bruk «Be om intervju» på en oppføring eller et spørsmål.', whole: 'hele profilen', seen: 'Sett av assistenten', wait: 'Venter',
-        done: 'Marker som ferdig', reopen: 'Åpne igjen', archive: 'Fjern fra listen', copy: 'Kopier', copied: 'Kopiert', since: 'tilkoblet siden {t}' },
+        done: 'Marker som ferdig', reopen: 'Åpne igjen', archive: 'Fjern fra listen', copy: 'Kopier', copied: 'Kopiert', since: 'tilkoblet siden {t}', answered: 'Svaret ditt' },
 };
 const A = (k, t) => AI[nb ? 'nb' : 'en'][k].replace('{t}', t || '');
 let ai = { connected: false, items: [], open: 0 };
@@ -136,8 +136,8 @@ function drawAiDialog() {
   for (const i of ai.items) {
     const d = mk('div', 'aireq' + (i.status === 'done' ? ' done' : ''));
     d.append(mk('div', 'who', '#' + i.n + ' ' + (i.entry || A('whole'))));
-    if (i.comment) d.append(mk('div', '', i.comment));
-    if (i.quote) d.append(mk('div', 'q', '«' + i.quote + '»'));
+    if (i.kind === 'answer') { d.append(mk('div', 'q', i.quote), mk('div', '', A('answered') + ': «' + i.comment + '»')); }
+    else { if (i.comment) d.append(mk('div', '', i.comment)); if (i.quote) d.append(mk('div', 'q', '«' + i.quote + '»')); }
     if (i.note) d.append(mk('div', 'note', '→ ' + i.note));
     const meta = mk('div', 'meta');
     if (i.status === 'open') { const seen = ai.connected && ai.seen.includes(i.n); meta.append(mk('span', seen ? 'seen' : 'wait', A(seen ? 'seen' : 'wait'))); }
