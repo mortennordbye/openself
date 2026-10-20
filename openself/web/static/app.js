@@ -9,7 +9,7 @@
 //   toast(text)                   optional
 //   hits(text)                    optional: search result count
 //   path(files, root)             optional: the files behind what is shown
-//   request(id, text)             optional: ask an assistant about an entry (adds a button)
+//   request(id, comment, quote)   optional: ask an assistant about an entry (adds a button)
 //   changed()                     optional: called after every write
 //   nav                           optional: an element in the host's header to hold the view tabs and
 //                                 buttons; without it they are a bar at the top of the container

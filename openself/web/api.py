@@ -11,7 +11,7 @@ import os
 import re
 import threading
 
-from .. import history, importer, index, lint, model, schema, write
+from .. import assistant, history, importer, index, lint, model, schema, write
 
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{2,80}$")
 REV_RE = re.compile(r"^[0-9a-f]{4,40}$")
@@ -325,5 +325,36 @@ def as_of(root, date, file_prefix=""):
             "entries": [entry_json(e, file_prefix) for e in list(prof.entries.values()) + list(prof.removed.values())]}
 
 
-GET = {"profile": data, "state": state, "log": log, "show": show, "asof": as_of}
-POST = {"init": init, "save": save, "new": new, "remove": remove, "flag": flag, "restore": restore, "import": import_}
+@guarded
+def assistant_state(root):
+    """Whether an assistant is watching (openself assistant watch), and the requests: open ones and
+    the last finished ones."""
+    need(root)
+    items = assistant.load(root)
+    shown = [i for i in items if i.get("status") == "open"] + [i for i in items if i.get("status") == "done"][-10:]
+    return dict(assistant.state(root), ok=True, items=sorted(shown, key=lambda i: -i.get("n", 0)),
+                open=sum(1 for i in items if i.get("status") == "open"))
+
+
+@guarded
+def request(root, d):
+    """Ask the assistant about an entry ("id"), or the whole profile (no id)."""
+    need(root)
+    id_ = str(d.get("id", ""))
+    if id_:
+        check_id(id_)
+    i = assistant.add(root, id_, str(d.get("comment", "")), str(d.get("quote", "")))
+    return {"ok": True, "request": i, "connected": assistant.state(root)["connected"]}
+
+
+@guarded
+def requeststatus(root, d):
+    n = d.get("n")
+    if not isinstance(n, int):
+        raise ValueError("n must be a request number")
+    return {"ok": True, "request": assistant.set_status(root, n, str(d.get("status", "")))}
+
+
+GET = {"profile": data, "state": state, "log": log, "show": show, "asof": as_of, "assistant": assistant_state}
+POST = {"init": init, "save": save, "new": new, "remove": remove, "flag": flag, "restore": restore, "import": import_,
+        "request": request, "requeststatus": requeststatus}

@@ -32,17 +32,34 @@
   .hi { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; color: var(--mut); }
   #theme { display: grid; place-items: center; background: none; border: 0; color: var(--mut); cursor: pointer; font-size: 15px; padding: 4px; border-radius: 6px; line-height: 1; }
   #theme:hover { color: var(--fg); background: var(--bg); }
+  /* The AI chip: green while an assistant runs `openself assistant watch` (fresh heartbeat). */
+  #ai { display: flex; align-items: center; gap: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; color: var(--mut);
+        padding: 3px 10px 3px 8px; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  #ai .aidot { width: 7px; height: 7px; border-radius: 50%; background: var(--mut); } #ai.on { color: var(--fg); } #ai.on .aidot { background: var(--ok); }
+  #aidlg { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--fg); padding: 18px 20px; width: min(560px, calc(100vw - 32px));
+           box-shadow: var(--shadow); } #aidlg::backdrop { background: rgba(0,0,0,.35); }
+  #aidlg h2 { font-size: 15px; margin: 0 0 6px; } #aidlg p { color: var(--mut); margin: 6px 0; line-height: 1.5; }
+  .aistep { display: flex; align-items: center; gap: 8px; margin: 6px 0; } .aistep code { flex: 1; background: var(--bg); border: 1px solid var(--line);
+            border-radius: 6px; padding: 6px 8px; white-space: pre-wrap; word-break: break-word; font-size: 12px; }
+  .aiwait { display: flex; align-items: center; gap: 8px; color: var(--warn); margin: 10px 0 4px; } .aiwait.on { color: var(--ok); }
+  .aiwait .aidot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .aireq { border-top: 1px solid var(--line); padding: 8px 0; } .aireq .who { font-weight: 600; } .aireq .q { color: var(--mut); font-style: italic; }
+  .aireq .meta { display: flex; align-items: center; gap: 8px; color: var(--mut); font-size: 12px; margin-top: 4px; } .aireq .meta .sp { flex: 1; }
+  .aireq.done { opacity: .7; } .aireq .note { margin-top: 4px; } .aireq .wait { color: var(--warn); } .aireq .seen { color: var(--ok); }
+  .aihead { display: flex; align-items: center; gap: 8px; } .aihead h2 { flex: 1; }
 </style></head><body>
 <header>
   <span class="brand"><i></i>OpenSelf</span>
   <nav id="nav"></nav>
   <span class="dot" id="dot"></span><span id="status"></span>
+  <button id="ai" hidden><span class="aidot"></span><span id="ailbl"></span></button>
   <span class="sync" id="sync" hidden></span>
   <label class="find"><svg class="hi" viewBox="0 0 24 24"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4"/></svg><input id="q" type="search" placeholder="Search"><span id="hits"></span></label>
   <button id="theme"></button>
 </header>
 <main id="main"></main>
 <div id="toast"></div>
+<dialog id="aidlg"><div class="aihead"><h2 id="aititle"></h2><button class="os-btn ghost" id="aiclose">×</button></div><div id="aiconn"></div><div id="ailist"></div></dialog>
 <script src="/static/marked.min.js"></script>
 <script src="/static/app.js"></script>
 <script>
@@ -72,7 +89,66 @@ const host = {
   nav: $('nav'),
   hits: t => { $('hits').textContent = t; },
   changed: () => drawSync(),
+  // "Ask me about this": a request the assistant picks up through `openself assistant watch`.
+  request: async (id, comment, quote) => {
+    const j = await post('request', { id, comment, quote }); drawAi();
+    return j.ok ? { ok: true, message: A(j.connected ? 'sent' : 'queued') } : j;
+  },
 };
+const AI = {
+  en: { on: 'AI connected', off: 'No AI connected', title: 'Assistant', sent: 'Sent to the assistant', queued: 'Saved. No assistant is connected yet: click the AI chip to connect one.',
+        lead: 'Requests from "Ask about this" wait here until an assistant (Claude Code or another) picks them up. It interviews you in its own window and writes your answers into the profile.',
+        step1: 'Open a terminal in the home folder', step2: 'Start Claude Code, already told to watch the requests', other: 'Or tell another assistant, in this folder:',
+        prompt: 'Tell an assistant, in a terminal next to the profile:', waiting: 'Waiting for an assistant to connect ...', nowOn: 'Connected',
+        none: 'No requests yet. Use "Ask about this" on an entry or a question.', whole: 'the whole profile', seen: 'Seen by the assistant', wait: 'Waiting',
+        done: 'Mark done', reopen: 'Open again', archive: 'Remove from the list', copy: 'Copy', copied: 'Copied', since: 'connected since {t}' },
+  nb: { on: 'AI tilkoblet', off: 'Ingen AI tilkoblet', title: 'Assistent', sent: 'Sendt til assistenten', queued: 'Lagret. Ingen assistent er tilkoblet ennå: klikk på AI-knappen for å koble til.',
+        lead: 'Forespørsler fra «Be om intervju» venter her til en assistent (Claude Code eller en annen) tar dem. Den intervjuer deg i sitt eget vindu og skriver svarene dine inn i profilen.',
+        step1: 'Åpne en terminal i hjemmemappen', step2: 'Start Claude Code, som allerede er bedt om å følge med på forespørslene', other: 'Eller si dette til en annen assistent, i denne mappen:',
+        prompt: 'Si dette til en assistent, i en terminal ved profilen:', waiting: 'Venter på at en assistent kobler til ...', nowOn: 'Tilkoblet',
+        none: 'Ingen forespørsler ennå. Bruk «Be om intervju» på en oppføring eller et spørsmål.', whole: 'hele profilen', seen: 'Sett av assistenten', wait: 'Venter',
+        done: 'Marker som ferdig', reopen: 'Åpne igjen', archive: 'Fjern fra listen', copy: 'Kopier', copied: 'Kopiert', since: 'tilkoblet siden {t}' },
+};
+const A = (k, t) => AI[nb ? 'nb' : 'en'][k].replace('{t}', t || '');
+let ai = { connected: false, items: [], open: 0 };
+async function drawAi() {
+  let j; try { j = await get('assistant'); } catch (e) { return; }
+  const b = $('ai'); if (!j.ok) { b.hidden = true; return; }
+  ai = j; b.hidden = false; b.classList.toggle('on', j.connected);
+  $('ailbl').textContent = A(j.connected ? 'on' : 'off') + (j.open ? ' · ' + j.open : '');
+  b.title = j.connected ? A('since', new Date(j.since).toLocaleTimeString(nb ? 'nb-NO' : undefined, { hour: '2-digit', minute: '2-digit' })) : A('off');
+  if ($('aidlg').open) drawAiDialog();
+}
+function drawAiDialog() {
+  const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const code = text => { const r = mk('div', 'aistep'), c = mk('code', '', text), b = mk('button', 'os-btn ghost', A('copy'));
+    b.onclick = async () => { try { await navigator.clipboard.writeText(text); toast(A('copied')); } catch (e) { getSelection().selectAllChildren(c); } };
+    r.append(c, b); return r; };
+  $('aititle').textContent = A('title');
+  const conn = $('aiconn'); conn.replaceChildren(mk('p', '', A('lead')));
+  if (!ai.connected) {
+    if (ai.home) conn.append(mk('p', '', '1. ' + A('step1')), code('cd ' + ai.home), mk('p', '', '2. ' + A('step2')), code(ai.command), mk('p', '', A('other')), code(ai.prompt));
+    else conn.append(mk('p', '', A('prompt')), code(ai.prompt));
+  }
+  const w = mk('div', 'aiwait' + (ai.connected ? ' on' : '')); w.append(mk('span', 'aidot'), mk('span', '', A(ai.connected ? 'nowOn' : 'waiting'))); conn.append(w);
+  const list = $('ailist'); list.replaceChildren();
+  if (!ai.items.length) list.append(mk('p', '', A('none')));
+  for (const i of ai.items) {
+    const d = mk('div', 'aireq' + (i.status === 'done' ? ' done' : ''));
+    d.append(mk('div', 'who', '#' + i.n + ' ' + (i.entry || A('whole'))));
+    if (i.comment) d.append(mk('div', '', i.comment));
+    if (i.quote) d.append(mk('div', 'q', '«' + i.quote + '»'));
+    if (i.note) d.append(mk('div', 'note', '→ ' + i.note));
+    const meta = mk('div', 'meta');
+    if (i.status === 'open') { const seen = ai.connected && ai.seen.includes(i.n); meta.append(mk('span', seen ? 'seen' : 'wait', A(seen ? 'seen' : 'wait'))); }
+    meta.append(mk('span', 'sp'), mk('span', '', new Date(i.time).toLocaleDateString(nb ? 'nb-NO' : undefined)));
+    const act = (label, status) => { const b = mk('button', 'os-btn ghost', label); b.onclick = async () => { await post('requeststatus', { n: i.n, status }); drawAi(); }; meta.append(b); };
+    act(A(i.status === 'open' ? 'done' : 'reopen'), i.status === 'open' ? 'done' : 'open'); act(A('archive'), 'archived');
+    d.append(meta); list.append(d);
+  }
+}
+$('ai').onclick = () => { drawAiDialog(); $('aidlg').showModal(); };
+$('aiclose').onclick = () => $('aidlg').close();
 async function drawSync() {
   const s = await get('sync'); const box = $('sync');
   if (!s.ok || !s.home) { box.hidden = true; return; }
@@ -117,11 +193,12 @@ async function start() {
   document.title = 'OpenSelf' + (d.manifest && d.manifest.owner ? ': ' + d.manifest.owner : '');
   document.documentElement.lang = d.lang || 'en'; $('q').placeholder = d.lang === 'nb' ? 'Søk' : 'Search';
   if (ui) ui.destroy();
-  ui = OpenSelfUI($('main'), host); await ui.tick(); drawSync();
+  ui = OpenSelfUI($('main'), host); await ui.tick(); drawSync(); drawAi();
   if (!start.loop) start.loop = setInterval(() => ui && ui.tick(), 1500);
 }
 drawTheme();
 $('q').addEventListener('input', () => ui && ui.search($('q').value, true));
 setInterval(() => { if (!document.hidden) drawSync(); }, 15000);
+setInterval(() => { if (!document.hidden && ui) drawAi(); }, 2000);
 start();
 </script></body></html>

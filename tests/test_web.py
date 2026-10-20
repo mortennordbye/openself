@@ -85,6 +85,11 @@ class Web(unittest.TestCase):
         code, log = self.call(port, "/api/log?id=person")
         self.assertEqual(log["items"][0]["subject"], "person: edited [owner]")
         self.assertEqual(self.call(port, "/api/sync")[1]["home"], None)
+        code, j = self.call(port, "/api/request", {"id": "person", "comment": "tittel?"})
+        self.assertEqual((code, j["connected"]), (200, False))
+        code, a = self.call(port, "/api/assistant")
+        self.assertEqual((a["open"], a["home"], a["command"]), (1, "", ""))
+        self.assertIn("openself assistant watch", a["prompt"])
 
     def test_first_run_init(self):
         folder = os.path.join(self.tmp, "new")
