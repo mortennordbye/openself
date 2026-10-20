@@ -3,7 +3,8 @@ section 8). A CV, a portfolio site or a form reads this instead of the profile, 
 out the same things:
 
 - assignments with an `nda` customer,
-- customer names the profile does not allow (`customer_public`; the alias or sector is used),
+- customer names the profile does not allow (`customer_public`; the alias or sector is used), or
+  every customer name when the output hides them (`names=False`, for a public website),
 - the private `reference` section, the owner's own words, the flags and sections no tool writes from,
 - the text of an entry with an open `omit` wish (its title, period and technology stay),
 - removed entries (_removed/).
@@ -57,31 +58,39 @@ def fields(e, names):
     return {k: (e.list(k) if k in LISTS else e.get(k)) for k in names}
 
 
-def customer(e, labels):
-    """The customer as it may be shown, or "" (internal work, or nothing allowed)."""
+def customer(e, labels, names=True):
+    """The customer as it may be shown, or "" (internal work, or nothing allowed). Without names,
+    never the real name: the alias, else the sector (or the number of customers in a portfolio)."""
     if e.get("kind") == "internal":
         return ""
+    if not names:
+        n = len(e.list("customers"))
+        if e.get("kind") == "portfolio":
+            return e.get("customer_alias") or (f"{n} " + labels["fields"]["customers"].lower() if n else "")
+        return e.get("customer_alias") or e.get("sector") or ""
     label = index.customer_label(e, labels)
     return "" if label == "?" else label
 
 
-def named(e):
-    """True when the entry's id may be shown (it names nobody the profile keeps hidden)."""
-    return e.type != "assignment" or e.get("kind") == "internal" or e.get("customer_public") == "public"
+def named(e, names=True):
+    """True when the entry's id may be shown (it names nobody the output keeps hidden)."""
+    return e.type != "assignment" or e.get("kind") == "internal" or (names and e.get("customer_public") == "public")
 
 
-def slugs(entries):
+def slugs(entries, names=True):
     """id -> a slug for public pages: the id itself, or the start and role when the id would name a
     customer the profile keeps hidden."""
     out, taken = {}, set()
     for e in sorted(entries, key=lambda e: e.id):
-        if named(e):
+        if named(e, names):
             out[e.id] = e.id
             taken.add(e.id)
     for e in sorted(entries, key=lambda e: e.id):
         if e.id in out:
             continue
-        base = "-".join(x for x in (e.get("start"), model.slug_heading(e.get("role_en") or e.get("role") or e.type)) if x)
+        role = (e.get("role_en") or e.get("role") or e.type).lower()
+        role = role.replace("æ", "ae").replace("ø", "o").replace("å", "a")
+        base = "-".join(x for x in (e.get("start"), model.slug_heading(role)) if x)
         slug, n = base, 2
         while slug in taken:
             slug, n = f"{base}-{n}", n + 1
@@ -102,18 +111,20 @@ def table(e, columns):
     return [dict(zip(columns, (r + [""] * len(columns))[:len(columns)])) for r in rows]
 
 
-def public_view(profile):
-    """The profile as it may be shown to others, as plain data."""
-    labels = schema.labels(profile.lang)
+def public_view(profile, names=True, lang=None):
+    """The profile as it may be shown to others, as plain data. names=False never shows a real
+    customer name, only the alias or sector (a public website). lang picks the language of the few
+    generated words (such as "3 customers"); the default is the profile's."""
+    labels = schema.labels(lang or profile.lang)
     jobs = index.newest_first(profile.of_type("employment"))
     work = [e for e in index.newest_first(profile.of_type("assignment")) if public(e)]
-    slug = slugs(jobs + work)
+    slug = slugs(jobs + work, names)
     person = profile.entries.get("person")
 
     assignments = []
     for e in work:
         a = item(e, slug[e.id], ASSIGNMENT)
-        a["customer"] = customer(e, labels)
+        a["customer"] = customer(e, labels, names)
         if a["employment"] not in slug:
             a["employment"] = ""
         assignments.append(a)
@@ -131,6 +142,7 @@ def public_view(profile):
     return {
         "format": "openself-public-1",
         "lang": profile.lang,
+        "names": names,
         "person": ({"id": "person", "slug": "person", "confidence": person.get("confidence"),
                     "omit": bool(omitted(person)), **fields(person, PERSON),
                     "sections": text_sections(person)} if person else None),
@@ -154,24 +166,29 @@ def strings(view):
         yield view
 
 
-def hidden(profile):
+def hidden(profile, names=True):
     """Values the public view must never contain: the names of customers the profile keeps hidden
-    (nda, anonymised or not decided, and named as public by no other entry), and the private
-    reference sections. A tool can check its output for them."""
+    (nda, anonymised or not decided, and named as public by no other entry; with names=False every
+    customer that is not also an employer), and the private reference sections. A tool can check
+    its output for them."""
     named, out = set(), set()
+    if not names:
+        named = {e.get("employer").lower() for e in profile.of_type("employment") if e.get("employer")}
     for e in profile.of_type("assignment"):
-        names = {c for c in [e.get("customer")] + e.list("customers") if c}
-        if e.get("customer_public") == "public":
-            named |= {c.lower() for c in names}
+        found = {c for c in [e.get("customer")] + e.list("customers") if c}
+        if e.get("kind") == "internal":
+            pass
+        elif names and e.get("customer_public") == "public":
+            named |= {c.lower() for c in found}
         else:
-            out |= names
+            out |= found
         for s in model.sections(e.body, e.type):
             if s.id == "reference":
                 out |= {ln.strip(" -*") for ln in s.text.split("\n") if len(ln.strip(" -*")) > 3}
     return sorted((h for h in out if h.lower() not in named), key=lambda s: (-len(s), s))
 
 
-def leaks(text, profile):
+def leaks(text, profile, names=True):
     """The hidden values (see hidden) that occur in text, case-insensitively."""
     low = text.lower()
-    return [h for h in hidden(profile) if re.search(r"(?<!\w)" + re.escape(h.lower()) + r"(?!\w)", low)]
+    return [h for h in hidden(profile, names) if re.search(r"(?<!\w)" + re.escape(h.lower()) + r"(?!\w)", low)]
