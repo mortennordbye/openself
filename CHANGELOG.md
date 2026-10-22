@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Photo edit recipes: `background.paint`, the owner's touch-up strokes (paint background or keep),
+  in the original's coordinates, so an editor can reopen them.
+
 - Photos (schema 1, additive): `photos/` holds the owner's originals, never changed, and edits
   (`photos/edits/<name>.jpg` with a recipe `<name>.json`: crop, rotate, adjustments, background),
   so a photo can be fitted to an audience and edited again later. The person's new `photo` field
