@@ -152,7 +152,7 @@ def check_recipe(recipe, root=None):
                 and all(isinstance(p, list) and len(p) == 2 and all(number(v, -1, 2) for v in p) for p in s["points"])
                 for s in paint):
             out.append('background.paint is a list of strokes {"mode": "background" or "keep", "size": 0 to 1, '
-                       '"points": [[x, y], ...]}
+                       '"points": [[x, y], ...]}')
     if "size" in recipe and not (isinstance(recipe["size"], int) and 64 <= recipe["size"] <= 4096):
         out.append("size is the long side in pixels, 64 to 4096")
     if "note" in recipe and not isinstance(recipe["note"], str):
