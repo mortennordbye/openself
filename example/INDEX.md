@@ -1,4 +1,4 @@
-<!-- Generert av openself. Ikke rediger; kjør `python3 -m openself index`. digest: 1b12b3f25c2b0c27 -->
+<!-- Generert av openself. Ikke rediger; kjør `python3 -m openself index`. digest: d97e6fdff6f732d9 -->
 
 # Indeks: Ola Eksempel
 

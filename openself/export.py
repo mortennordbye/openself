@@ -7,7 +7,8 @@ out the same things:
   every customer name when the output hides them (`names=False`, for a public website),
 - the private `reference` section, the owner's own words, the flags and sections no tool writes from,
 - the text of an entry with an open `omit` wish (its title, period and technology stay),
-- removed entries (_removed/).
+- removed entries (_removed/),
+- every photo but the person's `photo` (a path in the profile, for the tool to read).
 
 Each entry keeps its `id`, for citing `<id>#<section>` in local tools, and gets a `slug` that is safe
 to put on a public page: an id holds the customer's name, which an anonymised entry must not show.
@@ -21,7 +22,7 @@ from . import index, model, schema
 
 SECTIONS = {"person": ("about",), "employment": ("summary",),
             "assignment": ("summary", "challenge", "contribution", "outcome")}
-PERSON = ("name", "title", "location", "languages", "email", "phone", "linkedin", "github", "links")
+PERSON = ("name", "title", "location", "languages", "email", "phone", "linkedin", "github", "links", "photo")
 EMPLOYMENT = ("employer", "title", "title_en", "location", "employment_type", "start", "end", "breaks", "tech")
 ASSIGNMENT = ("kind", "employment", "sector", "role", "role_en", "start", "end", "breaks", "allocation",
               "team_size", "tech", "methods")

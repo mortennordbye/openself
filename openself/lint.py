@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from functools import lru_cache
 
-from . import index, model, schema
+from . import index, model, photos, schema
 
 STALE_MONTHS = 18
 GAP_MONTHS = 3
@@ -79,6 +79,11 @@ def lint(profile, today=None, tech_path=None):
         if e.error:
             continue
         check_entry(e, profile, employments, canon, alias, now, add)
+
+    if profile.root and os.path.isdir(profile.root):
+        person = profile.entries.get("person")
+        for level, where, field, msg in photos.check(profile.root, person.get("photo") if person else ""):
+            add(level, where, field, msg)
 
     check_overlaps(profile, add)
     check_employment_overlaps(employments, add)
