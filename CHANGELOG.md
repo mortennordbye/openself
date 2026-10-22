@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Photos (schema 1, additive): `photos/` holds the owner's originals, never changed, and edits
+  (`photos/edits/<name>.jpg` with a recipe `<name>.json`: crop, rotate, adjustments, background),
+  so a photo can be fitted to an audience and edited again later. The person's new `photo` field
+  names the one tools show, and the public view passes it on. `openself photo list|add|use|remove`,
+  the web API's `photo_*` functions for tools that edit, and lint checks for the folder.
+
 - Every answer saved in the web app also becomes a request (`ANSWER #N`) for a watching assistant,
   which carries the answer into the entry where it settles something and asks when it is unclear.
 

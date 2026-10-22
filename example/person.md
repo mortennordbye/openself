@@ -13,6 +13,7 @@ phone:
 linkedin: https://www.linkedin.com/in/ola-eksempel-fiktiv
 github: https://github.com/ola-eksempel-fiktiv
 links: []
+photo:
 confidence: stated
 last_reviewed: 2026-09-14
 ---

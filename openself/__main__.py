@@ -13,6 +13,10 @@
   as-of DIR DATE                                  the index as the profile was on DATE (YYYY-MM-DD)
   export DIR [--no-names] [--lang en|nb]          the public view as JSON: what a CV or site may show;
                                                   --no-names shows the alias or sector, never a customer
+  photo list DIR                                  the photos: originals, edits and the person's photo
+  photo add DIR FILE [--name NAME]                store FILE (JPEG, PNG, WebP) as an original in photos/
+  photo use DIR [PATH]                            make PATH (photos/... ) the photo tools show; none clears it
+  photo remove DIR PATH                           delete an original or an edit (the history keeps it)
   import DIR [URL ...] [--dry-run]                certifications from a Credly profile or a Microsoft
                                                   Learn transcript link (default: the stored links)
 
@@ -46,7 +50,7 @@ import sys
 
 import os
 
-from . import assistant, export, guard, history, importer, index, lint, model, sync, write
+from . import assistant, export, guard, history, importer, index, lint, model, photos, sync, write
 
 
 def main(argv=None):
@@ -71,6 +75,8 @@ def main(argv=None):
     p = sub.add_parser("as-of"); p.add_argument("dir"); p.add_argument("date")
     p = sub.add_parser("export"); p.add_argument("dir"); p.add_argument("--no-names", action="store_true")
     p.add_argument("--lang")
+    p = sub.add_parser("photo"); p.add_argument("action", choices=["list", "add", "use", "remove"]); p.add_argument("dir")
+    p.add_argument("path", nargs="?", default=""); p.add_argument("--name", default="")
     p = sub.add_parser("import"); p.add_argument("dir"); p.add_argument("urls", nargs="*"); p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("serve"); p.add_argument("dir", nargs="?"); p.add_argument("--port", type=int, default=8765)
     p.add_argument("--no-browser", action="store_true")
@@ -241,6 +247,8 @@ def main(argv=None):
         print(history.restore(a.dir, a.id, a.rev, a.actor) or "already identical")
     elif a.cmd == "import":
         return run_import(a.dir, a.urls, a.dry_run)
+    elif a.cmd == "photo":
+        return run_photo(a)
     elif a.cmd == "as-of":
         rev = history.rev_at(a.dir, a.date)
         if not rev:
@@ -311,6 +319,52 @@ def run_assistant(a):
             return 1
         print(f"request #{n} done")
     return 0
+
+
+def run_photo(a):
+    from .web import api
+    if a.action == "list":
+        _, d = api.photo_list(a.dir)
+        if not d.get("ok"):
+            print(d.get("message"), file=sys.stderr)
+            return 1
+        print(f"photo: {d['photo'] or '(none)'}")
+        for p in d["originals"]:
+            print(f"  {p['file']:<40} {p['bytes'] // 1000:>6} kB  original")
+        for e in d["edits"]:
+            what = f"edit of {(e['recipe'] or {}).get('photo', '?')}" + (f": {e['recipe']['note']}" if (e["recipe"] or {}).get("note") else "")
+            print(f"  {e['file'] or EDIT_MISSING:<40} {e['bytes'] // 1000:>6} kB  {what}")
+        return 0
+    if a.action in ("add", "remove") and not a.path:
+        print(f"usage: openself photo {a.action} DIR {'FILE' if a.action == 'add' else 'PATH'}", file=sys.stderr)
+        return 1
+    try:
+        if a.action == "add":
+            with open(a.path, "rb") as f:
+                data = f.read()
+            name = a.name or write.slugify(os.path.splitext(os.path.basename(a.path))[0], 64) or "photo"
+            print(photos.add(a.dir, data, name))
+        elif a.action == "use":
+            api.set_photo(a.dir, a.path)
+            print(f"person.md: photo: {a.path or '(none)'}")
+        else:
+            _, d = api.photo_list(a.dir)
+            photos.remove(a.dir, a.path, in_use=[d.get("photo", "")])
+            print(f"removed {a.path}")
+    except api.Refused as e:
+        print(e.message, file=sys.stderr)
+        return 1
+    except FileExistsError as e:
+        print(f"there is already a photo named {e}; pick another with --name", file=sys.stderr)
+        return 1
+    except (OSError, ValueError) as e:
+        print(e, file=sys.stderr)
+        return 1
+    print(f"commit with: openself commit {a.dir} {'person' if a.action == 'use' else 'photos'} '...' --actor owner")
+    return 0
+
+
+EDIT_MISSING = "(result missing)"
 
 
 def run_import(root, urls, dry_run):

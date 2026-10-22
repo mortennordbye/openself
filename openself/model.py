@@ -193,8 +193,9 @@ def load_entry(rel, text):
 
 def version(root):
     """Cheap fingerprint of the folder for polling: names, sizes and modification times."""
+    from . import photos
     h = hashlib.sha1()
-    for rel in [MANIFEST] + profile_files(root):
+    for rel in [MANIFEST] + profile_files(root) + photos.files(root):
         try:
             st = os.stat(os.path.join(root, rel))
         except OSError:

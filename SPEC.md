@@ -32,6 +32,7 @@ education.md          a table, one row per degree or trade certificate
 employments/<id>.md   one file per employment
 assignments/<id>.md   one file per assignment
 _removed/<id>.md      removed entries
+photos/               photos of the owner, with their edits (optional)
 ```
 
 `openself.json`, the manifest:
@@ -46,7 +47,8 @@ labels in `INDEX.md`. `readonly: true` marks a copy that must not be edited (for
 decrypted checkout of a published profile).
 
 Files starting with `.` are ignored. Nothing else belongs in the folder: source documents (old
-CVs, exports) stay with the tool that collected them.
+CVs, exports) stay with the tool that collected them. The one exception is `photos/` (section 2,
+Photos), since a photo is part of how the owner presents themselves, not a source.
 
 ## 2. Entries
 
@@ -110,6 +112,7 @@ empty ones included, so a reader sees what is missing.
 | `name`, `title`, `location`, `languages` | person | name, professional title, where they live, languages with level |
 | `clearance`, `clearance_valid_until` | person | security clearance level and its expiry date |
 | `email`, `phone`, `linkedin`, `github`, `links` | person | contact details and public pages |
+| `photo` | person | the photo tools show: a path in `photos/` (an original or an edit); empty means none |
 | `start`, `end` | both | `YYYY-MM` (`YYYY` when the month is unknown); `end` may be `ongoing` |
 | `breaks` | both | leave inside the period, `YYYY-MM/YYYY-MM`, both months included |
 | `allocation`, `team_size` | assignment | percent of full time; people on the team, owner included |
@@ -185,6 +188,48 @@ owner's answer in quotes. `emphasis` and `omit` are standing wishes every tool m
 an error. `grep -rn "⚑ \(question\|spørsmål\|conflict\|konflikt\):"` lists exactly the open
 questions and conflicts.
 
+### Photos
+
+The owner's photos live in `photos/`. A photo the owner gives is an **original**, and is never
+changed or replaced. Fitting it to an audience (a new crop, lighter, warmer, another background) makes
+an **edit**: the image a tool made, and next to it the **recipe** that says how, so the edit can be
+opened again and changed without going back to zero.
+
+```
+photos/<name>.jpg          an original (.jpg, .jpeg, .png or .webp)
+photos/edits/<name>.jpg    an edit: the image tools use
+photos/edits/<name>.json   its recipe
+```
+
+A name is lower-case letters, digits and `-` (`studio-2024`, `cv-bank`), and an original and an
+edit never share one. The person's `photo` field names the one tools show by default, for example
+`photos/edits/cv-bank.jpg`; a tool may let the owner pick another for one output.
+
+The recipe is JSON:
+
+```json
+{"format": "openself-photo-edit-1", "photo": "studio-2024.jpg",
+ "crop": {"x": 0.12, "y": 0.04, "w": 0.7, "h": 0.88}, "rotate": -1.5, "flip": false,
+ "adjust": {"brightness": 8, "contrast": 5, "saturation": -10, "warmth": 6, "sharpen": 0},
+ "background": {"mode": "color", "color": "#e9eef3", "tolerance": 28, "soft": 6},
+ "size": 900, "note": "lighter, for the bank"}
+```
+
+| Key | Meaning |
+|---|---|
+| `photo` | the original, by file name in `photos/` (required) |
+| `crop` | the part kept, as fractions of the original (after `rotate` and `flip`) |
+| `rotate`, `flip` | degrees (-180 to 180, clockwise), and a mirror left to right |
+| `adjust` | `brightness`, `contrast`, `saturation`, `warmth`, `sharpen`, each -100 to 100, 0 being none |
+| `background` | `mode`: `keep`, `color` (replace it with `color`) or `blur`; `tolerance` and `soft` (0 to 100) say how far the background reaches and how soft its edge is, `blur` how strong a blur is |
+| `size` | the long side of the result in pixels |
+| `note` | what the edit is for, in the owner's words |
+
+Keys starting with `x-` are a tool's own. **The image is the edit**: tools show the `.jpg`, never
+remake it from the recipe, and another editor need not reproduce an edit pixel for pixel. Every
+version of every photo is kept in the history and inside each encrypted upload (section 7), so
+keep originals reasonably small (around 2000 pixels on the long side is plenty).
+
 ## 3. Rules
 
 0. **Only the owner adds facts, in their own words.** A tool that finds a claim the profile does
@@ -208,7 +253,7 @@ The profile folder is its own git repository.
 
 - Every change is a commit with the subject `<id>: <what changed> [<actor>]`, where actor is
   `owner`, `claude` (or another assistant) or `tool`. Several entries at once use the most
-  important id or `profile`.
+  important id or `profile`; a change to `photos/` uses `photos`.
 - Tags mark points worth finding again: `migrated-<date>`, and whatever a tool releases from the
   profile (a CV version).
 - **History is never rewritten.** Restoring an old version of an entry writes it back as a new
@@ -224,10 +269,12 @@ of its own, even a public one, publish it encrypted with every version inside (s
 `openself lint` reports three levels:
 
 - **error**: the file breaks the format (bad frontmatter or field, id not matching the file name,
-  duplicate id, end before start, unknown employment, malformed flag).
+  duplicate id, end before start, unknown employment, malformed flag, a photo that is not the
+  image its extension says, a bad recipe, a `photo` field naming a missing file).
 - **warning**: probably a mistake (period outside the employment, more than 100% allocation at
   once, a tech name that is not canonical, unknown heading, stale `INDEX.md`, a source cited
-  inline as `[kilde: ...]` or `[source: ...]`).
+  inline as `[kilde: ...]` or `[source: ...]`, a file in `photos/` that is not a photo, an edit
+  missing its image or recipe, a photo over 3 MB).
 - **prompt**: a gap worth asking the owner about (open questions and conflicts, unknown customer
   naming, missing role, allocation, team size or own contribution, a technology in `tech` that
   the text never names, employments that share more than one month, the person's missing title,
@@ -304,6 +351,7 @@ so every output (a CV, a portfolio site, a form) shows the same things: it drops
 assignments, shows customers as `customer_public` allows, copies only the `about`, `summary`,
 `challenge`, `contribution` and `outcome` sections, keeps only the facts of an entry flagged
 `omit`, and gives each entry a `slug` for public pages, since an id can hold a customer's name.
+Of the photos it shows only the person's `photo`; the others stay with the owner.
 `customer_public` says what may be named at all; an output can still hide every real name (the
 view's `names` switch), showing `customer_alias`, else `sector`. Tools let the owner turn this on
 and off per output, and a tool that publishes to everyone (a website) hides names by default.

@@ -7,11 +7,13 @@ can expose it. openself.web.server is the one OpenSelf ships; other tools can mo
 functions under their own routes.
 """
 
+import base64
+import binascii
 import os
 import re
 import threading
 
-from .. import assistant, history, importer, index, lint, model, schema, write
+from .. import assistant, history, importer, index, lint, model, photos, schema, write
 
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{2,80}$")
 REV_RE = re.compile(r"^[0-9a-f]{4,40}$")
@@ -362,3 +364,107 @@ def requeststatus(root, d):
 GET = {"profile": data, "state": state, "log": log, "show": show, "asof": as_of, "assistant": assistant_state}
 POST = {"init": init, "save": save, "new": new, "remove": remove, "flag": flag, "restore": restore, "import": import_,
         "request": request, "requeststatus": requeststatus}
+
+
+# ---- photos (SPEC section 2, Photos) -----------------------------------------------------------
+
+def decoded(d, key="data"):
+    """The bytes of a base64 field (a data: URL prefix is allowed)."""
+    raw = str(d.get(key, ""))
+    if raw.startswith("data:"):
+        raw = raw.split(",", 1)[-1]
+    try:
+        return base64.b64decode(raw, validate=True)
+    except (binascii.Error, ValueError):
+        raise Refused(400, "the image is not valid base64")
+
+
+def person_photo(root):
+    e = model.load_profile(root).entries.get("person")
+    return e.get("photo") if e else ""
+
+
+@guarded
+def photo_list(root):
+    """The originals, the edits (with their recipes) and the person's chosen photo."""
+    need(root)
+    return {"ok": True, "version": model.version(root), "photo": person_photo(root),
+            "originals": photos.originals(root), "edits": photos.edits(root)}
+
+
+def photo_path(root, rel):
+    """The file of a photo in the profile, or None (only photos/, nothing outside it)."""
+    rel = str(rel)
+    if not rel.startswith(photos.FOLDER + "/") or rel not in photos.files(root):
+        return None
+    return os.path.join(root, rel)
+
+
+@guarded
+def photo_add(root, d, actor="owner"):
+    """Store a new original: {name, data (base64)}."""
+    writable(root)
+    data, name = decoded(d), str(d.get("name", ""))
+    with lock_for(root):
+        keep_outside_changes(root)
+        try:
+            rel = photos.add(root, data, name)
+        except FileExistsError:
+            raise Refused(409, f"there is already a photo named {name}")
+        return finish(root, "photos", f"added {rel}", actor) | {"file": rel}
+
+
+@guarded
+def photo_save(root, d, actor="owner"):
+    """Store an edit: {name, recipe, data (base64 JPEG)}. use: true also makes it the person's photo."""
+    writable(root)
+    name, recipe, jpeg = str(d.get("name", "")), d.get("recipe"), decoded(d)
+    with lock_for(root):
+        keep_outside_changes(root)
+        try:
+            rel = photos.save_edit(root, name, recipe, jpeg)
+        except FileExistsError:
+            raise Refused(409, f"an original is named {name}; give the edit another name")
+        what = f"edit {name} saved"
+        if d.get("use") and person_photo(root) != rel:
+            set_photo(root, rel)
+            what += ", now the photo"
+        return finish(root, "photos", what, actor) | {"file": rel}
+
+
+def set_photo(root, rel):
+    e = model.load_profile(root).entries.get("person")
+    if e is None or e.error:
+        raise Refused(400, "person.md is missing or unreadable")
+    if rel and not os.path.isfile(os.path.join(root, rel)):
+        raise Refused(404, f"{rel} does not exist")
+    meta = dict(e.meta, photo=rel)
+    problems = [m for f, m in schema.validate(meta, "person") if f == "photo"]
+    if problems:
+        raise Refused(400, "photo: " + problems[0])
+    write.save(root, "person", meta, e.body, e.sha)
+
+
+@guarded
+def photo_use(root, d, actor="owner"):
+    """Make a photo the one tools show: {file} (empty: no photo)."""
+    writable(root)
+    rel = str(d.get("file", ""))
+    with lock_for(root):
+        keep_outside_changes(root)
+        set_photo(root, rel)
+        return finish(root, "person", f"photo: {rel}" if rel else "no photo", actor)
+
+
+@guarded
+def photo_remove(root, d, actor="owner"):
+    """Delete an original or an edit: {file}. The history keeps it."""
+    writable(root)
+    rel = str(d.get("file", ""))
+    with lock_for(root):
+        keep_outside_changes(root)
+        try:
+            photos.remove(root, rel, in_use=[person_photo(root)])
+        except FileNotFoundError:
+            raise Refused(404, f"no photo {rel}")
+        return finish(root, "photos", f"removed {rel}", actor)
