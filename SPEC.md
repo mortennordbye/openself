@@ -221,7 +221,7 @@ The recipe is JSON:
 | `crop` | the part kept, as fractions of the original (after `rotate` and `flip`) |
 | `rotate`, `flip` | degrees (-180 to 180, clockwise), and a mirror left to right |
 | `adjust` | `brightness`, `contrast`, `saturation`, `warmth`, `sharpen`, each -100 to 100, 0 being none |
-| `background` | `mode`: `keep`, `color` (replace it with `color`) or `blur`; `tolerance` and `soft` (0 to 100) say how far the background reaches and how soft its edge is, `blur` how strong a blur is |
+| `background` | `mode`: `keep`, `color` (replace it with `color`) or `blur`; `tolerance` and `soft` (0 to 100) say how far the background reaches and how soft its edge is, `blur` how strong a blur is; `paint` is the owner's touch-up strokes, in order: `{"mode": "background" or "keep", "size": brush radius as a fraction of the original's long side, "points": [[x, y], ...] as fractions of the original}` |
 | `size` | the long side of the result in pixels |
 | `note` | what the edit is for, in the owner's words |
 

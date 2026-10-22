@@ -90,6 +90,9 @@ class Photos(unittest.TestCase):
         self.assertEqual(photos.check_recipe(RECIPE), [])
         bad = dict(RECIPE, crop={"x": 0.5, "y": 0, "w": 0.8, "h": 1}, adjust={"glow": 3}, background={"mode": "sky"})
         self.assertEqual(len(photos.check_recipe(bad)), 3)
+        stroke = {"mode": "background", "size": 0.02, "points": [[0.3, 0.2], [0.35, 0.19]]}
+        self.assertEqual(photos.check_recipe(dict(RECIPE, background={"mode": "color", "paint": [stroke]})), [])
+        self.assertEqual(len(photos.check_recipe(dict(RECIPE, background={"mode": "color", "paint": [dict(stroke, mode="x")]}))), 1)
         with self.assertRaises(ValueError):
             photos.save_edit(self.dir, "cv", RECIPE, JPEG)  # the original is missing
         photos.add(self.dir, png(), "studio")
