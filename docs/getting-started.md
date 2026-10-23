@@ -75,9 +75,8 @@ keys, and pushes it. GitHub now has one opaque file. That is it: you have a prof
 
 ## Next steps
 
-- **Lock `main`** so GitHub refuses anything that has not passed the guard, even from you. The
-  commands are in the template README under
-  [Lock main](https://github.com/mortennordbye/openself-template#lock-main-recommended).
+- **Lock `main`** so GitHub refuses anything that has not passed the guard, even from you:
+  [Lock main](concepts/sync.md#lock-main).
 - **A second machine:** see [On a new machine](concepts/sync.md#on-a-new-machine).
 - **CVs:** [OpenVita](openvita.md) builds them from the profile.
 - **Documents and images:** `make vault NAME=docs` keeps any files encrypted next to the profile.
