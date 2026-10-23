@@ -21,3 +21,14 @@ updates:
       docs:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+  # Test-only requirements, hash-pinned.
+  - package-ecosystem: "pip"
+    directory: "/tests"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(deps):"
+    groups:
+      tests:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
