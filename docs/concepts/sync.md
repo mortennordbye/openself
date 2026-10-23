@@ -114,9 +114,9 @@ git add .openself/config && git commit -m "Push through pull requests"   # open 
 
 From then on `make push` sends the snapshot to the branch `openself/snapshot` and opens a pull
 request that GitHub merges by itself (a merge commit) once the guard passes; `make pull`
-fast-forwards to it. GitHub only offers such rules for the default branch on personal
-repositories, so a bad push to another branch is public, but it cannot reach `main`, and the check
-turns red.
+fast-forwards to it. GitHub only offers content rules to organisation repositories, so other
+branches cannot be locked the same way: a bad push there is public, but it cannot reach `main`,
+and the check turns red.
 
 ## Vaults
 
