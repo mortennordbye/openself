@@ -1,0 +1,22 @@
+# Shared look for every OpenSelf diagram: the web app's dark palette (openself/web/static/app.css).
+# Imported with ...@_style. Not rendered on its own. Edge styles are not carried by an import,
+# so each diagram repeats: (** -> **)[*].style: {stroke: "#6aa4f8"; font-color: "#8e8e98"; font-size: 14}
+style.fill: "#1f1f23"
+
+classes: {
+  card: {
+    label.near: bottom-center
+    style: {fill: "#17171a"; stroke: "#303036"; font-color: "#e6e6ea"; border-radius: 8; font-size: 16}
+  }
+  aside: {
+    label.near: bottom-center
+    style: {fill: "#1f1f23"; stroke: "#f0ad4e"; stroke-dash: 4; font-color: "#8e8e98"; border-radius: 8; font-size: 14}
+  }
+  group: {
+    style: {fill: "#1f1f23"; stroke: "#6aa4f8"; font-color: "#e6e6ea"; border-radius: 12; font-size: 18; bold: true}
+  }
+  public: {
+    style: {fill: "#1f1f23"; stroke: "#3fc1a5"; font-color: "#e6e6ea"; border-radius: 12; font-size: 18; bold: true}
+  }
+}
+

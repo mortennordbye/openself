@@ -1,0 +1,33 @@
+# What a profile is: a folder of small Markdown files, its own git repository, read by people,
+# tools and AI. See docs/concepts/profile.md. Render: make diagram
+...@_style
+(** -> **)[*].style: {stroke: "#6aa4f8"; font-color: "#8e8e98"; font-size: 14}
+direction: down
+
+profile: "profile/ (its own git repository)" {
+  class: group
+  grid-columns: 2
+  grid-gap: 20
+  person: "person.md\nwho you are" {class: card; width: 250; height: 175; icon: icons/mdi-card-account-details-outline.svg}
+  employments: "employments/<id>.md\none file per job title" {class: card; width: 250; height: 175; icon: icons/mdi-briefcase-outline.svg}
+  assignments: "assignments/<id>.md\none file per assignment" {class: card; width: 250; height: 175; icon: icons/mdi-file-document-outline.svg}
+  tables: "certifications.md\neducation.md\none row per entry" {class: card; width: 250; height: 175; icon: icons/mdi-table.svg}
+}
+
+entry: "inside an entry" {
+  class: group
+  grid-columns: 1
+  grid-gap: 20
+  front: "YAML frontmatter\nid, dates, role, tech,\nwhat may be shown" {class: card; width: 250; height: 175; icon: icons/mdi-code-braces.svg}
+  body: "your own words\nsections in Markdown" {class: card; width: 250; height: 175; icon: icons/mdi-text-box-outline.svg}
+  flags: "⚑ flags\nopen questions, conflicts,\nwhat to stress or leave out" {class: card; width: 250; height: 175; icon: icons/mdi-flag-outline-amber.svg}
+}
+
+index: "INDEX.md\ngenerated: the whole\ncareer on one page" {class: card; width: 250; height: 175; icon: icons/mdi-format-list-bulleted.svg}
+history: "git history\n<id>: <what> [actor]\nrestore, as of a date" {class: card; width: 250; height: 175; icon: icons/git.svg}
+readers: "tools and AI\ngrep, cite <id>#<section>" {class: aside; icon: icons/mdi-robot-outline-amber.svg}
+
+profile -> entry: "each file has"
+profile -> index: "openself index"
+profile -> history: "every change\nis a commit"
+index -> readers: "start here"

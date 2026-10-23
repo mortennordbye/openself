@@ -1,0 +1,37 @@
+# The OpenSelf ecosystem: which repository does what, and where your profile lives.
+# See docs/index.md. Render: make diagram
+...@_style
+(** -> **)[*].style: {stroke: "#6aa4f8"; font-color: "#8e8e98"; font-size: 14}
+direction: down
+
+framework: "Open source, on GitHub" {
+  class: public
+  openself: "openself\nthe format, library,\nCLI and web app" {class: card; icon: icons/python.svg}
+  template: "openself-template\nyour home starts\nas a copy of it" {class: card; icon: icons/mdi-content-copy.svg}
+  openvita: "openvita\nCVs from\nyour profile" {class: card; icon: icons/mdi-file-pdf-box.svg}
+}
+
+machine: "Your machine" {
+  class: group
+  app: "web app\nmake serve" {class: card; icon: icons/mdi-web.svg}
+  ai: "AI assistant\nfollows AGENTS.md" {class: card; icon: icons/mdi-robot-outline.svg}
+  cvs: "OpenVita\nworkbench" {class: card; icon: icons/mdi-file-document-outline.svg}
+
+  home: "your home: a clone of your own repository" {
+    class: group
+    profile: "profile/\nMarkdown files with\ntheir own git history" {class: card; icon: icons/mdi-file-tree.svg}
+    age: "profile.age\nall of it, encrypted" {class: card; icon: icons/mdi-lock-outline.svg}
+    profile -> age: "make push"
+  }
+
+  app -> home.profile: edit
+  ai -> home.profile: "edits, in\nyour words"
+  cvs -> home.profile: reads
+}
+
+repo: "your repository on GitHub\nprofile.age and public keys only" {class: card; icon: icons/github-light.svg}
+key: "secret key\npassword manager\nor Keychain" {class: aside; icon: icons/mdi-key-variant-amber.svg}
+
+framework -> machine: "Use this template, clone"
+machine.home.age -> repo: "git push, checked\nby the guard"
+key -> machine.home.age: "decrypt\n(make pull)" {style.stroke-dash: 4}

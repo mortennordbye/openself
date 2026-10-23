@@ -1,0 +1,22 @@
+# From profile to PDF with OpenVita. See docs/openvita.md. Render: make diagram
+...@_style
+(** -> **)[*].style: {stroke: "#6aa4f8"; font-color: "#8e8e98"; font-size: 14}
+direction: down
+
+profile: "your profile\nthe only source of facts" {class: card; icon: icons/mdi-file-tree.svg}
+view: "public view\nopenself export: no omitted\nentries, customers as allowed" {class: card; icon: icons/mdi-eye-outline.svg}
+draft: "first draft\nmake draft" {class: card; icon: icons/mdi-file-document-edit-outline.svg}
+
+bench: "workbench: make serve" {
+  class: group
+  cv: "the CV as a PDF,\nrebuilt on every save" {class: card; icon: icons/mdi-file-pdf-box.svg}
+  ai: "assistant edits\nfrom your comments" {class: card; icon: icons/mdi-robot-outline.svg}
+  ai -> cv
+}
+
+template: "template\nbuilt in, your own\nor your company's" {class: aside; icon: icons/mdi-palette-outline-amber.svg}
+release: "make release\nthe PDF you sent,\nnumbered and kept" {class: card; icon: icons/mdi-tag-outline.svg}
+
+profile -> view -> draft -> bench
+template -> bench.cv: "the look"
+bench -> release
