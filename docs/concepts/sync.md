@@ -92,12 +92,31 @@ already decrypt, add the public key it printed to `.openself/recipients`, then `
 
 ## Lock main
 
-Locking `main` with a GitHub ruleset (pull request and the `guard` check required, no direct or
-force pushes) means nothing reaches `main` without passing the guard there. With
-`push = pull-request` in `.openself/config`, `make push` then sends the snapshot to the branch
-`openself/snapshot` and opens a pull request that merges itself once the guard passes. It needs the
-GitHub CLI. The commands are in the template README under
-[Lock main](https://github.com/mortennordbye/openself-template#lock-main-recommended).
+Make GitHub refuse anything on `main` that has not passed the guard there, even from you. With the
+[GitHub CLI](https://cli.github.com) (`gh auth login` first), in the home:
+
+```sh
+gh api -X PATCH repos/<you>/<your-repo> -F allow_auto_merge=true -F delete_branch_on_merge=true
+gh api -X POST repos/<you>/<your-repo>/rulesets --input - <<'JSON'
+{"name": "main: pull request with the guard green", "target": "branch", "enforcement": "active",
+ "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
+ "rules": [{"type": "deletion"}, {"type": "non_fast_forward"},
+   {"type": "pull_request", "parameters": {"required_approving_review_count": 0,
+     "dismiss_stale_reviews_on_push": false, "require_code_owner_review": false,
+     "require_last_push_approval": false, "required_review_thread_resolution": false,
+     "allowed_merge_methods": ["merge", "squash"]}},
+   {"type": "required_status_checks", "parameters": {"strict_required_status_checks_policy": false,
+     "required_status_checks": [{"context": "guard", "integration_id": 15368}]}}]}
+JSON
+printf '# how make push uploads: through a pull request that merges itself once the guard passes\npush = pull-request\n' > .openself/config
+git add .openself/config && git commit -m "Push through pull requests"   # open a PR for this one, main is locked now
+```
+
+From then on `make push` sends the snapshot to the branch `openself/snapshot` and opens a pull
+request that GitHub merges by itself (a merge commit) once the guard passes; `make pull`
+fast-forwards to it. GitHub only offers such rules for the default branch on personal
+repositories, so a bad push to another branch is public, but it cannot reach `main`, and the check
+turns red.
 
 ## Vaults
 
