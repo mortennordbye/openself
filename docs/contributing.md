@@ -25,6 +25,14 @@ make docs-build      # build it the way CI does, with --strict
 make diagram         # re-render docs/assets/diagrams/*.d2 (needs Docker)
 ```
 
+## Pull requests
+
+`main` takes no direct pushes: open a pull request, and it merges (squash) once the checks are
+green. The title follows [Conventional Commits](https://www.conventionalcommits.org) and becomes
+the commit on `main`, which release-please reads to cut the next version: `feat:` for a minor
+release, `fix:` for a patch, `feat!:` for a major one, and `docs:`, `chore:`, `ci:`, `test:` or
+`refactor:` for changes that do not release on their own.
+
 ## Docs and diagrams
 
 The site is built from `docs/` with ProperDocs and Material and published to GitHub Pages on every
