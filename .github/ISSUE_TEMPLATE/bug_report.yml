@@ -1,0 +1,25 @@
+name: Bug report
+description: Report something that is broken
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Never paste real profile text, keys or a password manager session here. Use the example profile to reproduce if you can.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Also tell us what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / environment
+      description: openself commit or release, Python version, age version, OS
