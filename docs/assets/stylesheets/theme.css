@@ -1,0 +1,60 @@
+/* The OpenSelf web app's palette (openself/web/static/app.css), so the docs, the app and the
+   diagrams look like one thing. */
+
+[data-md-color-scheme="slate"] {
+  --md-hue: 240;
+
+  --md-default-bg-color: #1f1f23;
+  --md-default-fg-color: #e6e6ea;
+  --md-default-fg-color--light: #b4b4bc;
+  --md-default-fg-color--lighter: #8e8e98;
+  --md-default-fg-color--lightest: #303036;
+
+  --md-primary-fg-color: #17171a;
+  --md-primary-fg-color--light: #1f1f23;
+  --md-primary-fg-color--dark: #121215;
+  --md-primary-bg-color: #e6e6ea;
+  --md-primary-bg-color--light: #8e8e98;
+
+  --md-accent-fg-color: #8bb8fa;
+  --md-accent-fg-color--transparent: rgba(106, 164, 248, 0.1);
+  --md-accent-bg-color: #1f1f23;
+
+  --md-typeset-color: #d2d2d8;
+  --md-typeset-a-color: #6aa4f8;
+  --md-typeset-mark-color: rgba(240, 173, 78, 0.3);
+  --md-typeset-table-color: #303036;
+  --md-typeset-table-color--light: #17171a;
+
+  --md-code-bg-color: #17171a;
+  --md-code-fg-color: #e6e6ea;
+
+  --md-footer-bg-color: #121215;
+  --md-footer-bg-color--dark: #121215;
+  --md-footer-fg-color: #b4b4bc;
+  --md-footer-fg-color--light: #8e8e98;
+  --md-footer-fg-color--lighter: #8e8e98;
+}
+
+/* Diagrams are dark images; a hairline frame keeps them from bleeding into the page. */
+.md-typeset img[src*="diagrams/"] {
+  border: 1px solid #303036;
+  border-radius: 8px;
+}
+
+/* Material's outlined button takes the primary colour, which is the page colour here. */
+.md-typeset .md-button {
+  color: #6aa4f8;
+  border-color: #6aa4f8;
+}
+.md-typeset .md-button--primary {
+  background-color: #6aa4f8;
+  border-color: #6aa4f8;
+  color: #17171a;
+}
+.md-typeset .md-button:hover,
+.md-typeset .md-button:focus {
+  background-color: #8bb8fa;
+  border-color: #8bb8fa;
+  color: #17171a;
+}

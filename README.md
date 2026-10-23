@@ -1,5 +1,9 @@
 # OpenSelf
 
+**[Documentation](https://mortennordbye.github.io/openself/)** ·
+[Getting started](https://mortennordbye.github.io/openself/getting-started/) ·
+[The format](SPEC.md)
+
 An open file format for everything about a person: who they are, what they have done, and where
 they show up online. A profile is a plain folder of Markdown files with structured frontmatter,
 in its own git repository, owned by the person it describes. Any tool can read it: a CV builder,
@@ -19,6 +23,21 @@ in later schema versions, in the same shape.
   folder, a submodule, an encrypted backup.
 
 See [SPEC.md](SPEC.md) for the format and [example/](example/) for a complete fictional profile.
+
+## How the pieces fit
+
+[![The OpenSelf ecosystem: openself, openself-template and openvita on GitHub; your home on your machine with profile/ and profile.age; the web app, an AI assistant and OpenVita working on profile/; profile.age pushed to your own repository through the guard](docs/assets/diagrams/ecosystem-overview.png)](docs/assets/diagrams/ecosystem-overview.png?raw=1)
+
+> **Click to open the full-size image.** Rendered by `make diagram` from
+> [this file](docs/assets/diagrams/ecosystem-overview.d2).
+
+OpenSelf is three repositories and one of your own: **openself** (this one: the format, library
+and web app), **[openself-template](https://github.com/mortennordbye/openself-template)** (the
+starting point for your own repository, your *home*, which keeps the profile encrypted) and
+**[openvita](https://github.com/mortennordbye/openvita)** (CVs from the profile).
+
+**Start here:** [Getting started](https://mortennordbye.github.io/openself/getting-started/)
+takes you from nothing to your own encrypted profile on GitHub.
 
 ## The web app
 

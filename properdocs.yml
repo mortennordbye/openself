@@ -1,0 +1,68 @@
+site_name: OpenSelf
+site_description: An open file format for a person's record, owned by that person, and the tools around it
+site_url: https://mortennordbye.github.io/openself/
+repo_url: https://github.com/mortennordbye/openself
+repo_name: mortennordbye/openself
+edit_uri: edit/main/docs/
+docs_dir: docs
+
+# Rendering sources and the pinned requirements are for building, not pages.
+exclude_docs: |
+  requirements.txt
+  assets/diagrams/*.d2
+  assets/diagrams/render.sh
+  assets/diagrams/icons/README.md
+
+theme:
+  name: material
+  # Dark, like the OpenSelf web app; the colours live in the stylesheet.
+  palette:
+    scheme: slate
+    primary: custom
+    accent: custom
+  features:
+    - navigation.indexes
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - content.code.copy
+
+extra_css:
+  - assets/stylesheets/theme.css
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - def_list
+  - tables
+  - attr_list
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - How it works:
+      - The profile: concepts/profile.md
+      - Encryption and sync: concepts/sync.md
+  - CVs with OpenVita: openvita.md
+  - Working with an AI assistant: ai.md
+  - Troubleshooting: troubleshooting.md
+  - Reference:
+      - Commands: reference/cli.md
+      - The format (SPEC): reference/spec.md
+  - Contributing: contributing.md
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn

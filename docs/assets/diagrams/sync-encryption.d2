@@ -1,0 +1,35 @@
+# How the profile reaches GitHub without ever being readable there, and comes back on another
+# machine. See docs/concepts/sync.md. Render: make diagram
+...@_style
+(** -> **)[*].style: {stroke: "#6aa4f8"; font-color: "#8e8e98"; font-size: 14}
+direction: down
+
+here: "This machine: make push" {
+  class: group
+  profile: "profile/\nreadable, with history" {class: card; icon: icons/mdi-file-tree.svg}
+  bundle: "git bundle\nevery version, padded\nto 64 KiB steps" {class: card; icon: icons/mdi-package-variant.svg}
+  age: "profile.age\nencrypted with age to\nthe public keys" {class: card; icon: icons/mdi-lock-outline.svg}
+  guard: "guard\npre-commit and pre-push:\nonly .age files and keys" {class: card; icon: icons/mdi-shield-check-outline.svg}
+  recipients: ".openself/recipients\npublic keys, approved\non this machine" {class: aside; icon: icons/mdi-account-key-outline-amber.svg}
+  profile -> bundle -> age -> guard
+  recipients -> age: "encrypt to"
+}
+
+github: "GitHub: your repository" {
+  class: public
+  repo: "profile.age\n.openself/recipients\nREADME and tools" {class: card; icon: icons/github-light.svg}
+  ci: "guard workflow\nchecks every push\nand pull request" {class: card; icon: icons/mdi-shield-check-outline.svg}
+  repo -> ci
+}
+
+there: "Another machine: make pull" {
+  class: group
+  age2: "profile.age" {class: card; icon: icons/mdi-lock-outline.svg}
+  profile2: "profile/\nfast-forwarded,\nhistory and all" {class: card; icon: icons/mdi-file-tree.svg}
+  key: "secret key\npassword manager\nor Keychain" {class: aside; icon: icons/mdi-key-variant-amber.svg}
+  age2 -> profile2: decrypt
+  key -> age2: "only here"
+}
+
+here.guard -> github: "git push"
+github -> there: "git pull"
