@@ -32,7 +32,7 @@ push to `main`. A broken link between pages fails the build.
 
 Diagrams are [D2](https://d2lang.com): a source in `docs/assets/diagrams/<name>.d2`, rendered to
 `.svg` (used on this site) and `.png` (used in READMEs, since GitHub blocks the icons inside SVGs)
-by `make diagram`. Commit the source and both renders; CI renders again and fails if they differ.
+by `make diagram`. Commit the source and both renders; CI renders again and fails if the SVGs differ.
 Every diagram imports `_style.d2` for the palette, and every node carries an icon from
 `docs/assets/diagrams/icons/`. Keep them narrow: the docs column is about 700 pixels.
 

@@ -10,8 +10,12 @@ test: ## Run the tests
 diagram: ## Render docs/assets/diagrams/*.d2 to SVG and PNG (needs Docker)
 	docs/assets/diagrams/render.sh
 
+# The SVGs are compared byte for byte. The PNGs are rasterized from them and differ by a few bytes
+# between CPU architectures, so only their presence is checked.
 diagram-check: diagram ## Fail if the committed diagrams differ from their sources
-	@git diff --exit-code --stat -- docs/assets/diagrams || { echo "Run make diagram and commit the result."; exit 1; }
+	@git diff --exit-code --stat -- 'docs/assets/diagrams/*.svg' || { echo "Run make diagram and commit the result."; exit 1; }
+	@for f in docs/assets/diagrams/[!_]*.d2; do git ls-files --error-unmatch "$${f%.d2}.png" >/dev/null 2>&1 || { echo "$${f%.d2}.png is not committed"; exit 1; }; done
+	@git checkout -- 'docs/assets/diagrams/*.png'
 
 .venv-docs/bin/properdocs: docs/requirements.txt
 	python3 -m venv .venv-docs && .venv-docs/bin/pip install -q --require-hashes -r docs/requirements.txt
