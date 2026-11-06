@@ -1,4 +1,15 @@
+<div align="center">
+
+<img src="assets/icon.svg" alt="" width="112" height="112">
+
 # OpenSelf
+
+### An open file format for a person's record that people, tools and AI can read, edit and version.
+
+[![Python](https://img.shields.io/badge/Python-2e3e58?style=flat-square&logo=python&logoColor=white)](https://www.python.org) [![Markdown](https://img.shields.io/badge/Markdown-2e3e58?style=flat-square&logo=markdown&logoColor=white)](https://commonmark.org) [![age](https://img.shields.io/badge/age-2e3e58?style=flat-square)](https://age-encryption.org)<br>
+[![tests](https://img.shields.io/github/actions/workflow/status/mortennordbye/openself/test.yml?branch=main&style=flat-square&labelColor=2e3e58&label=tests)](https://github.com/mortennordbye/openself/actions/workflows/test.yml) [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/mortennordbye/openself?style=flat-square&labelColor=2e3e58&label=openssf%20scorecard)](https://scorecard.dev/viewer/?uri=github.com/mortennordbye/openself) [![License](https://img.shields.io/github/license/mortennordbye/openself?style=flat-square&labelColor=2e3e58&color=6aa4f8)](LICENSE) [![Last commit](https://img.shields.io/github/last-commit/mortennordbye/openself?style=flat-square&labelColor=2e3e58&color=6aa4f8)](https://github.com/mortennordbye/openself/commits/main) [![Stars](https://img.shields.io/github/stars/mortennordbye/openself?style=flat-square&labelColor=2e3e58&color=6aa4f8)](https://github.com/mortennordbye/openself/stargazers)
+
+</div>
 
 **[Documentation](https://mortennordbye.github.io/openself/)** ·
 [Getting started](https://mortennordbye.github.io/openself/getting-started/) ·
