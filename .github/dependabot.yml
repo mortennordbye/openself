@@ -4,31 +4,47 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps):"
     groups:
       github-actions:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+      # The auto-merge workflow reads this exact group name.
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
   # The docs site's hash-pinned requirements; the library itself has no dependencies.
   - package-ecosystem: "pip"
     directory: "/docs"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps):"
     groups:
       docs:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
   # Test-only requirements, hash-pinned.
   - package-ecosystem: "pip"
     directory: "/tests"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps):"
     groups:
       tests:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
