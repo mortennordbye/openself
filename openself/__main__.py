@@ -160,12 +160,19 @@ def main(argv=None):
         home = sync.find_home(a.dir or ".")
         try:
             if a.cmd == "serve":
-                from .web.server import serve
-                if home and (sync.identity_command() or "").split()[:1] == ["bw"] and sys.stdin.isatty():
-                    print("Unlocking Bitwarden so the app can pull (the session stays in this process).")
-                    sync.bw_session()
+                from .web.server import PortInUse, serve
+
+                def unlock():
+                    if home and (sync.identity_command() or "").split()[:1] == ["bw"] and sys.stdin.isatty():
+                        print("Unlocking Bitwarden so the app can pull (the session stays in this process).")
+                        sync.bw_session()
                 root = a.dir or (sync.profile_dir(home) if home else ".")
-                serve(root, a.port, not a.no_browser, home if home and os.path.abspath(root) == sync.profile_dir(home) else None)
+                try:
+                    serve(root, a.port, not a.no_browser,
+                          home if home and os.path.abspath(root) == sync.profile_dir(home) else None, ready=unlock)
+                except PortInUse as e:
+                    print(e, file=sys.stderr)
+                    return 1
             elif not home:
                 print("not in an OpenSelf home folder; run `openself home` first", file=sys.stderr)
                 return 1

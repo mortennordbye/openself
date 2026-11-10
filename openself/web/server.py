@@ -4,6 +4,7 @@ In a home folder (one with .openself/, see openself.sync) it also offers key set
 encrypted push and pull.
 """
 
+import errno
 import json
 import os
 import re
@@ -126,9 +127,28 @@ def make_handler(root, port, home):
     return Handler
 
 
-def serve(root, port=8765, open_browser=True, home=None):
+class PortInUse(Exception):
+    pass
+
+
+def serve(root, port=8765, open_browser=True, home=None, ready=None):
+    """Serve the web app. `ready` runs after the port is bound and before serving, so a
+    password prompt there never happens for a server that cannot start."""
     root = os.path.abspath(root)
-    srv = ThreadingHTTPServer(("127.0.0.1", port), make_handler(root, port, home))
+    try:
+        srv = ThreadingHTTPServer(("127.0.0.1", port), make_handler(root, port, home))
+    except OSError as e:
+        if e.errno != errno.EADDRINUSE:
+            raise
+        raise PortInUse(f"port {port} is already in use by another program "
+                        f"(see `lsof -nP -iTCP:{port} -sTCP:LISTEN`); "
+                        f"stop it, or use another port: openself serve --port {port + 1}") from None
+    if ready:
+        try:
+            ready()
+        except BaseException:
+            srv.server_close()
+            raise
     url = f"http://127.0.0.1:{port}/"
     print(f"OpenSelf: {root}\n{url}  (Ctrl+C to stop)", flush=True)
     if open_browser:
