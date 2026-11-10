@@ -141,6 +141,13 @@ class Web(unittest.TestCase):
             finally:
                 server.DEFAULT_PORT = default
             self.assertIn(f"port {port} is in use, so OpenSelf uses a free port", out.getvalue())
+        # A program on all addresses is busy too (macOS lets 127.0.0.1 bind beside it).
+        with socket.socket() as wild:
+            wild.bind(("0.0.0.0", 0))
+            wild.listen()
+            port = wild.getsockname()[1]
+            with self.assertRaises(PortInUse):
+                serve(tempfile.gettempdir(), port, False)
 
 
 if __name__ == "__main__":
