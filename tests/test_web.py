@@ -122,6 +122,25 @@ class Web(unittest.TestCase):
             self.assertEqual(r.returncode, 1)
             self.assertIn("already in use", r.stderr)
             self.assertNotIn("Traceback", r.stderr)
+            # With no port given, a busy default port falls back to a free one.
+            import contextlib
+            import io
+            from openself.web import server
+
+            class Stop(Exception):
+                pass
+
+            def stop():
+                raise Stop
+
+            out, default = io.StringIO(), server.DEFAULT_PORT
+            server.DEFAULT_PORT = port
+            try:
+                with contextlib.redirect_stdout(out), self.assertRaises(Stop):
+                    serve(tempfile.gettempdir(), None, False, ready=stop)
+            finally:
+                server.DEFAULT_PORT = default
+            self.assertIn(f"port {port} is in use, so OpenSelf uses a free port", out.getvalue())
 
 
 if __name__ == "__main__":

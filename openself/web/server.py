@@ -66,7 +66,8 @@ def make_handler(root, port, home):
             self.send(code, json.dumps(obj).encode(), "application/json")
 
         def host_ok(self):
-            return self.headers.get("Host", "") in (f"127.0.0.1:{port}", f"localhost:{port}")
+            bound = self.server.server_address[1]  # the real port, also when serve picked one
+            return self.headers.get("Host", "") in (f"127.0.0.1:{bound}", f"localhost:{bound}")
 
         def do_GET(self):
             u = urlparse(self.path)
@@ -131,18 +132,29 @@ class PortInUse(Exception):
     pass
 
 
-def serve(root, port=8765, open_browser=True, home=None, ready=None):
-    """Serve the web app. `ready` runs after the port is bound and before serving, so a
-    password prompt there never happens for a server that cannot start."""
+DEFAULT_PORT = 8765
+
+
+def serve(root, port=None, open_browser=True, home=None, ready=None):
+    """Serve the web app on `port`. With no port it uses 8765, or a free port when 8765 is
+    busy. `ready` runs after the port is bound and before serving, so a password prompt there
+    never happens for a server that cannot start."""
     root = os.path.abspath(root)
+    chosen = port is not None
+    port = DEFAULT_PORT if port is None else port
     try:
         srv = ThreadingHTTPServer(("127.0.0.1", port), make_handler(root, port, home))
     except OSError as e:
         if e.errno != errno.EADDRINUSE:
             raise
-        raise PortInUse(f"port {port} is already in use by another program "
-                        f"(see `lsof -nP -iTCP:{port} -sTCP:LISTEN`); "
-                        f"stop it, or use another port: openself serve --port {port + 1}") from None
+        if not chosen:
+            srv = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(root, 0, home))
+            print(f"port {port} is in use, so OpenSelf uses a free port", flush=True)
+        else:
+            raise PortInUse(f"port {port} is already in use by another program "
+                            f"(see `lsof -nP -iTCP:{port} -sTCP:LISTEN`); stop it, use another "
+                            f"port (--port {port + 1}), or leave out --port to get a free one") from None
+    port = srv.server_address[1]
     if ready:
         try:
             ready()

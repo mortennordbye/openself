@@ -20,7 +20,7 @@
   import DIR [URL ...] [--dry-run]                certifications from a Credly profile or a Microsoft
                                                   Learn transcript link (default: the stored links)
 
-  serve [DIR] [--port 8765] [--no-browser]        the web app for a profile
+  serve [DIR] [--port N] [--no-browser]           the web app (8765, or a free port if busy)
   home [DIR]                                      make DIR a home: .openself/, profile/, .gitignore
   keys [HOME] [--bitwarden]                       make this machine's key and add it to HOME's recipients;
                                                   --bitwarden moves the key into Bitwarden instead
@@ -78,7 +78,7 @@ def main(argv=None):
     p = sub.add_parser("photo"); p.add_argument("action", choices=["list", "add", "use", "remove"]); p.add_argument("dir")
     p.add_argument("path", nargs="?", default=""); p.add_argument("--name", default="")
     p = sub.add_parser("import"); p.add_argument("dir"); p.add_argument("urls", nargs="*"); p.add_argument("--dry-run", action="store_true")
-    p = sub.add_parser("serve"); p.add_argument("dir", nargs="?"); p.add_argument("--port", type=int, default=8765)
+    p = sub.add_parser("serve"); p.add_argument("dir", nargs="?"); p.add_argument("--port", type=int)
     p.add_argument("--no-browser", action="store_true")
     for name in ("home", "push", "pull"):
         sub.add_parser(name).add_argument("dir", nargs="?")
