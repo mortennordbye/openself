@@ -173,6 +173,9 @@ def main(argv=None):
                 except PortInUse as e:
                     print(e, file=sys.stderr)
                     return 1
+                except KeyboardInterrupt:
+                    print(file=sys.stderr)
+                    return 130
             elif not home:
                 print("not in an OpenSelf home folder; run `openself home` first", file=sys.stderr)
                 return 1

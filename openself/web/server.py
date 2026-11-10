@@ -8,6 +8,7 @@ import errno
 import json
 import os
 import re
+import socket
 import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -135,6 +136,21 @@ class PortInUse(Exception):
 DEFAULT_PORT = 8765
 
 
+def listening(port):
+    """Whether a program already accepts connections on this port on the loopback. The bind
+    alone does not tell: with SO_REUSEADDR, macOS lets 127.0.0.1:N bind beside a program that
+    listens on 0.0.0.0:N or [::]:N, and the browser can then reach the other one."""
+    for family, addr in ((socket.AF_INET, "127.0.0.1"), (socket.AF_INET6, "::1")):
+        try:
+            with socket.socket(family, socket.SOCK_STREAM) as s:
+                s.settimeout(0.3)
+                if s.connect_ex((addr, port)) == 0:
+                    return True
+        except OSError:
+            pass
+    return False
+
+
 def serve(root, port=None, open_browser=True, home=None, ready=None):
     """Serve the web app on `port`. With no port it uses 8765, or a free port when 8765 is
     busy. `ready` runs after the port is bound and before serving, so a password prompt there
@@ -143,6 +159,8 @@ def serve(root, port=None, open_browser=True, home=None, ready=None):
     chosen = port is not None
     port = DEFAULT_PORT if port is None else port
     try:
+        if listening(port):
+            raise OSError(errno.EADDRINUSE, "address in use")
         srv = ThreadingHTTPServer(("127.0.0.1", port), make_handler(root, port, home))
     except OSError as e:
         if e.errno != errno.EADDRINUSE:

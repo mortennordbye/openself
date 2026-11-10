@@ -53,7 +53,7 @@ readable only by you.
 make serve
 ```
 
-opens the web app on `http://127.0.0.1:8765`. The first time, it asks for your name and language
+opens the web app on `http://127.0.0.1:8765` (or on a free port, if another program uses 8765). The first time, it asks for your name and language
 and creates `profile/`. Add your jobs (employments) and what you did in them (assignments),
 certifications and education. Every save is a commit.
 
