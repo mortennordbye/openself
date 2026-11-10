@@ -51,7 +51,7 @@ Run these in your home folder. `make` on its own prints the list; each is a thin
 
 | Command | What it does |
 |---|---|
-| `serve [DIR] [--port 8765] [--no-browser]` | The web app for a profile |
+| `serve [DIR] [--port N] [--no-browser]` | The web app for a profile, on port 8765, or on a free port when 8765 is busy. With `--port`, a busy port is an error. |
 | `home [DIR]` | Make `DIR` a home: `.openself/`, `profile/`, `.gitignore` |
 | `keys [HOME] [--bitwarden]` | Make this machine's key and add it to the recipients |
 | `push [HOME]` / `pull [HOME]` | Encrypt and upload / fetch and decrypt, profile and vaults |

@@ -103,5 +103,45 @@ class Web(unittest.TestCase):
         self.assertEqual(self.call(port, "/api/init", {"owner": "x"})[0], 409)
 
 
+    def test_port_in_use(self):
+        # A busy port gives a clear message, and nothing (a password prompt) runs before that.
+        with socket.socket() as busy:
+            busy.bind(("127.0.0.1", 0))
+            busy.listen()
+            port = busy.getsockname()[1]
+            sys.path.insert(0, ROOT)
+            from openself.web.server import PortInUse, serve
+            ran = []
+            with self.assertRaises(PortInUse) as cm:
+                serve(tempfile.gettempdir(), port, False, ready=lambda: ran.append(1))
+            self.assertIn(f"port {port} is already in use", str(cm.exception))
+            self.assertEqual(ran, [])
+            r = subprocess.run([sys.executable, "-m", "openself", "serve", tempfile.gettempdir(),
+                                "--port", str(port), "--no-browser"],
+                               cwd=ROOT, capture_output=True, text=True, timeout=20)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("already in use", r.stderr)
+            self.assertNotIn("Traceback", r.stderr)
+            # With no port given, a busy default port falls back to a free one.
+            import contextlib
+            import io
+            from openself.web import server
+
+            class Stop(Exception):
+                pass
+
+            def stop():
+                raise Stop
+
+            out, default = io.StringIO(), server.DEFAULT_PORT
+            server.DEFAULT_PORT = port
+            try:
+                with contextlib.redirect_stdout(out), self.assertRaises(Stop):
+                    serve(tempfile.gettempdir(), None, False, ready=stop)
+            finally:
+                server.DEFAULT_PORT = default
+            self.assertIn(f"port {port} is in use, so OpenSelf uses a free port", out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
